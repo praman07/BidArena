@@ -1,5 +1,5 @@
-const auctionEngineService = require('./auctionEngine.service')
-const auctionRoomStore = require('./auctionRoomStore.service')
+const auctionEngineService = require('../auction-engine/AuctionEngine')
+const auctionRoomStore = require('../auction-engine/RecoveryManager')
 
 /**
  * Auction Heat Service

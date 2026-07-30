@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
 import useAuth from '@/features/auth/hooks/useAuth'
+import useMarketplaceSocket from '@/hooks/useMarketplaceSocket'
 import { Button } from '@/components/ui/button'
 import StatsCards from '../components/StatsCards'
 import QuickActions from '../components/QuickActions'
@@ -95,9 +96,11 @@ export default function Dashboard() {
     ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
     : 'Collector'
 
-  const loadDashboard = async () => {
-    setLoading(true)
-    setError(null)
+  const loadDashboard = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const [statsData, recentData, activityData, marketplace] = await Promise.all([
         getDashboardStatsRequest(),
@@ -116,15 +119,24 @@ export default function Dashboard() {
         .slice(0, 3)
       setLiveAuctions(mappedLive)
     } catch (err) {
-      setError(err.message || 'Could not load dashboard. Please try again.')
+      if (!silent) {
+        setError(err.message || 'Could not load dashboard. Please try again.')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadDashboard()
-  }, [])
+  }, [loadDashboard])
+
+  useMarketplaceSocket({
+    enabled: Boolean(user),
+    onUpdate: useCallback(() => {
+      loadDashboard({ silent: true })
+    }, [loadDashboard]),
+  })
 
   const statsCards = useMemo(() => buildStatsCards(stats), [stats])
 

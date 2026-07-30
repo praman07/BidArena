@@ -53,9 +53,14 @@ const initSocketServer = (httpServer) => {
 
   io.use(async (socket, next) => {
     try {
+      socket.data.joinedAuctions = new Set()
       const token = extractSocketToken(socket)
+
+      // Guests may connect for marketplace updates only.
+      // Join room / place bid still require socket.user (enforced in handlers).
       if (!token) {
-        return next(new Error('Authentication required'))
+        socket.user = null
+        return next()
       }
 
       let payload
@@ -72,7 +77,6 @@ const initSocketServer = (httpServer) => {
         avatar: user.avatar,
         role: user.role,
       }
-      socket.data.joinedAuctions = new Set()
       return next()
     } catch (error) {
       return next(error)
@@ -81,7 +85,9 @@ const initSocketServer = (httpServer) => {
 
   io.on('connection', (socket) => {
     if (!env.isProduction) {
-      console.log(`[Socket] Connected ${socket.id} as ${socket.user?.username}`)
+      console.log(
+        `[Socket] Connected ${socket.id} as ${socket.user?.username || 'guest'}`
+      )
     }
     registerAuctionSocket(io, socket)
 
