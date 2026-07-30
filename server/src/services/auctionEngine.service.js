@@ -1,4 +1,8 @@
 const { validateBid } = require('../validators/bid.validator')
+const Auction = require('../models/Auction')
+const Bid = require('../models/Bid')
+const Timeline = require('../models/Timeline')
+const Winner = require('../models/Winner')
 
 /**
  * Authoritative In-Memory Auction Engine
@@ -155,6 +159,36 @@ class AuctionEngineService {
       state.bidHistory.pop()
     }
 
+    // --- ASYNC DATABASE PERSISTENCE ---
+    // Fire and forget to not block the atomic execution queue
+    Promise.all([
+      Bid.create({
+        bidId: bidRecord.bidId,
+        auctionId,
+        userId: bidRecord.userId,
+        amount: bidAmount,
+        timestamp: bidRecord.timestamp
+      }),
+      Auction.updateOne(
+        { auctionId },
+        { 
+          $set: { 
+            currentHighestBid: bidAmount,
+            highestBidder: bidRecord.userId,
+            totalBidsCount: state.totalBidsCount,
+            lastBidAt: bidRecord.timestamp
+          }
+        },
+        { upsert: true }
+      ),
+      Timeline.create({
+        auctionId,
+        eventType: 'BID_PLACED',
+        details: { bidId: bidRecord.bidId, amount: bidAmount, userId: bidRecord.userId },
+        timestamp: bidRecord.timestamp
+      })
+    ]).catch(err => console.error(`[AuctionEngine] Failed to persist bid ${bidRecord.bidId}:`, err))
+
     // Prepare clean payload for broadcasting
     const broadcastPayload = {
       auctionId: state.auctionId,
@@ -205,9 +239,29 @@ class AuctionEngineService {
         winningBid: state.currentHighestBid,
       }
       broadcastService.broadcastAuctionWinner(auctionId, winnerPayload)
+
+      // Async database persistence for winner
+      Winner.create({
+        auctionId: state.auctionId,
+        userId: state.highestBidder.userId,
+        winningBid: state.currentHighestBid,
+      }).catch(err => console.error(`[AuctionEngine] Failed to persist winner for ${auctionId}:`, err))
     } else {
       console.log(`[AuctionEngine] Auction ${auctionId} closed with no winner.`)
     }
+
+    // Async database persistence for auction closure
+    Promise.all([
+      Auction.updateOne({ auctionId }, { $set: { status: 'CLOSED' } }, { upsert: true }),
+      Timeline.create({
+        auctionId,
+        eventType: 'AUCTION_CLOSED',
+        details: { 
+          hasWinner: !!state.highestBidder,
+          winningBid: state.currentHighestBid 
+        }
+      })
+    ]).catch(err => console.error(`[AuctionEngine] Failed to persist closure for ${auctionId}:`, err))
 
     return state
   }
