@@ -1,62 +1,40 @@
 const { Server } = require('socket.io')
 const corsOptions = require('../config/cors')
 const SOCKET_EVENTS = require('../constants/socket.events')
-const registerRoomHandlers = require('./handlers/room.handler')
-const {
-  registerAuctionRoomHandlers,
-  handleAuctionDisconnectCleanup,
-} = require('./handlers/auctionRoom.handler')
-const registerBidPipelineHandlers = require('./handlers/bidPipeline.handler')
-const registerBidHandlers = require('./handlers/bid.handler')
-const registerBroadcastHandlers = require('./handlers/broadcast.handler')
-const registerAuctionEngineHandlers = require('./handlers/auctionEngine.handler')
 
 let io = null
 
-/**
- * Initializes Socket.IO on the provided HTTP server instance.
- * @param {import('http').Server} server - HTTP Server instance
- * @returns {import('socket.io').Server} Socket.IO server instance
- */
 const initSocket = (server) => {
-  io = new Server(server, {
-    cors: corsOptions,
-  })
+  console.log("Initializing Socket.IO...");
+  io = new Server(server, { cors: corsOptions })
+  console.log("Socket.IO initialized successfully");
+  // Lazy load handlers to avoid circular dependencies during module initialization
+  const registerAuctionSockets = require('./auction.socket')
+  const registerBidSockets = require('./bid.socket')
+  const registerChatSockets = require('./chat.socket')
 
   io.on(SOCKET_EVENTS.CONNECTION, (socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`)
 
-    // Register room event handlers
-    registerRoomHandlers(io, socket)
-    registerAuctionRoomHandlers(io, socket)
-    // Unified pipeline: validation → engine → broadcast
-    registerBidPipelineHandlers(io, socket)
-    registerBidHandlers(io, socket)
-    registerBroadcastHandlers(io, socket)
-    registerAuctionEngineHandlers(io, socket)
+    // Register modular sockets
+    registerAuctionSockets(io, socket)
+    registerBidSockets(io, socket)
+    registerChatSockets(io, socket)
 
-    // Handle disconnect and perform cleanup
     socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
       console.log(`[Socket] Client disconnected: ${socket.id} (Reason: ${reason})`)
-      handleAuctionDisconnectCleanup(io, socket)
+      // Trigger cleanup logic if needed
+      const { handleAuctionDisconnectCleanup } = require('./auction.socket')
+      if (handleAuctionDisconnectCleanup) handleAuctionDisconnectCleanup(io, socket)
     })
   })
 
   return io
 }
 
-/**
- * Gets the initialized Socket.IO server instance.
- * @returns {import('socket.io').Server}
- */
 const getIO = () => {
-  if (!io) {
-    throw new Error('Socket.IO is not initialized! Call initSocket(server) first.')
-  }
+  if (!io) throw new Error('Socket.IO is not initialized! Call initSocket(server) first.')
   return io
 }
 
-module.exports = {
-  initSocket,
-  getIO,
-}
+module.exports = { initSocket, getIO }

@@ -1,5 +1,5 @@
 const SOCKET_EVENTS = require('../constants/socket.events')
-const { getIO } = require('../sockets')
+// getIO will be required lazily to avoid circular dependencies
 
 /**
  * Socket.IO Real-Time Broadcasting Service
@@ -30,7 +30,7 @@ class BroadcastService {
       timestamp: data.timestamp || new Date(),
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_HIGHEST_BID, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_HIGHEST_BID, payload)
     console.log(`[Broadcast] Highest bid broadcast to ${roomName}: $${payload.currentHighestBid}`)
   }
 
@@ -50,7 +50,7 @@ class BroadcastService {
       lastBidAt: stats.lastBidAt || null,
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_STATS, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_STATS, payload)
     console.log(`[Broadcast] Auction stats broadcast to ${roomName}`)
   }
 
@@ -67,7 +67,7 @@ class BroadcastService {
       bidderCount: Number(count) || 0,
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_BIDDER_COUNT, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_BIDDER_COUNT, payload)
     console.log(`[Broadcast] Bidder count (${payload.bidderCount}) broadcast to ${roomName}`)
   }
 
@@ -84,7 +84,7 @@ class BroadcastService {
       spectatorCount: Number(count) || 0,
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_SPECTATORS, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_SPECTATORS, payload)
     console.log(`[Broadcast] Spectator count (${payload.spectatorCount}) broadcast to ${roomName}`)
   }
 
@@ -104,7 +104,7 @@ class BroadcastService {
       activeUsers: roomStats.activeUsers || [],
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_ROOM_UPDATE, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_ROOM_UPDATE, payload)
     console.log(`[Broadcast] Room update broadcast to ${roomName}`)
   }
 
@@ -126,7 +126,7 @@ class BroadcastService {
       recentBids: state.recentBids || [],
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_STATE, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_STATE, payload)
     console.log(`[Broadcast] Full auction state broadcast to ${roomName}`)
   }
   /**
@@ -142,7 +142,7 @@ class BroadcastService {
       remainingTime: Math.max(0, Number(remainingTime) || 0),
     }
 
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIME_UPDATE, payload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIME_UPDATE, payload)
   }
 
   /**
@@ -153,7 +153,7 @@ class BroadcastService {
     if (!auctionId) return
     const roomName = this.getRoomName(auctionId)
     
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIMER_ENDED, { auctionId })
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIMER_ENDED, { auctionId })
     console.log(`[Broadcast] Timer ended broadcast to ${roomName}`)
   }
 
@@ -166,7 +166,7 @@ class BroadcastService {
     if (!auctionId) return
     const roomName = this.getRoomName(auctionId)
     
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_WINNER, winnerPayload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_WINNER, winnerPayload)
     console.log(`[Broadcast] Auction winner broadcast to ${roomName}`)
   }
 
@@ -180,7 +180,7 @@ class BroadcastService {
     const roomName = this.getRoomName(auctionId)
     
     // Only emit, avoid spamming console logs every second
-    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_LIVE_STATS, statsPayload)
+    require('../sockets').getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_LIVE_STATS, statsPayload)
   }
 }
 

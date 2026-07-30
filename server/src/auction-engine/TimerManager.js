@@ -1,4 +1,4 @@
-const broadcastService = require('./broadcast.service')
+const broadcastService = require('./BroadcastManager')
 
 /**
  * Server-Side Timer Service for Auctions
@@ -33,9 +33,9 @@ class AuctionTimerService {
       intervalId: null
     }
 
-    const auctionEngineService = require('./auctionEngine.service')
-    const auctionRoomStore = require('./auctionRoomStore.service')
-    const auctionHeatService = require('./auctionHeat.service')
+    const auctionEngineService = require('./AuctionEngine')
+    const auctionRoomStore = require('./RecoveryManager')
+    const auctionHeatService = require('../services/auctionHeat.service')
 
     // Tick every 1 second (1000ms)
     timerState.intervalId = setInterval(() => {
@@ -66,7 +66,7 @@ class AuctionTimerService {
         broadcastService.broadcastTimerEnded(auctionId)
         
         // Lock auction and determine winner
-        const auctionEngineService = require('./auctionEngine.service')
+        const auctionEngineService = require('./AuctionEngine')
         auctionEngineService.closeAuction(auctionId)
       }
     }, 1000)

@@ -1,7 +1,7 @@
-const SOCKET_EVENTS = require('../../constants/socket.events')
-const auctionRoomStore = require('../../services/auctionRoomStore.service')
-const auctionEngineService = require('../../services/auctionEngine.service')
-const auctionTimerService = require('../../services/auctionTimer.service')
+const SOCKET_EVENTS = require('../constants/socket.events')
+const auctionRoomStore = require('../auction-engine/RecoveryManager')
+const auctionEngineService = require('../auction-engine/AuctionEngine')
+const auctionTimerService = require('../auction-engine/TimerManager')
 
 /**
  * Registers auction room management socket event listeners.
@@ -9,10 +9,6 @@ const auctionTimerService = require('../../services/auctionTimer.service')
  * @param {import('socket.io').Socket} socket - Socket connection instance
  */
 const registerAuctionRoomHandlers = (io, socket) => {
-  /**
-   * Handle joining an auction room
-   * Payload: { auctionId: string, user?: { userId: string, username: string, role?: string } }
-   */
   socket.on(SOCKET_EVENTS.AUCTION_JOIN, (payload) => {
     try {
       const auctionId = typeof payload === 'string' ? payload : payload?.auctionId
@@ -68,10 +64,6 @@ const registerAuctionRoomHandlers = (io, socket) => {
     }
   })
 
-  /**
-   * Handle leaving an auction room
-   * Payload: { auctionId: string }
-   */
   socket.on(SOCKET_EVENTS.AUCTION_LEAVE, (payload) => {
     try {
       const auctionId = typeof payload === 'string' ? payload : payload?.auctionId
@@ -115,11 +107,6 @@ const registerAuctionRoomHandlers = (io, socket) => {
   })
 }
 
-/**
- * Cleanup in-memory auction room states when a socket disconnects.
- * @param {import('socket.io').Server} io - Socket.IO server instance
- * @param {import('socket.io').Socket} socket - Disconnected socket instance
- */
 const handleAuctionDisconnectCleanup = (io, socket) => {
   const affectedRooms = auctionRoomStore.handleDisconnect(socket.id)
 
@@ -140,7 +127,5 @@ const handleAuctionDisconnectCleanup = (io, socket) => {
   })
 }
 
-module.exports = {
-  registerAuctionRoomHandlers,
-  handleAuctionDisconnectCleanup,
-}
+module.exports = registerAuctionRoomHandlers;
+module.exports.handleAuctionDisconnectCleanup = handleAuctionDisconnectCleanup;

@@ -27,4 +27,5 @@ app.use('/api/auth', authRoutes)
 app.use(notFoundHandler)
 app.use(errorHandler)
 
+// Keep app.js focused on Express configuration
 module.exports = app
