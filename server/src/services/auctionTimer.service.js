@@ -44,6 +44,10 @@ class AuctionTimerService {
       if (timerState.remainingTime <= 0) {
         this.stopTimer(auctionId)
         broadcastService.broadcastTimerEnded(auctionId)
+        
+        // Lock auction and determine winner
+        const auctionEngineService = require('./auctionEngine.service')
+        auctionEngineService.closeAuction(auctionId)
       }
     }, 1000)
 
