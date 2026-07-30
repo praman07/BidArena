@@ -8,7 +8,18 @@ import {
   UPCOMING_AUCTIONS,
 } from '../constants/dashboardData'
 
-export default function RightSidebarWidgets() {
+export default function RightSidebarWidgets({ upcomingAuctions }) {
+  const upcoming =
+    upcomingAuctions && upcomingAuctions.length
+      ? upcomingAuctions.map((item) => ({
+          id: item.id,
+          title: item.title,
+          image: item.image || item.images?.[0],
+          startsIn: item.displayStatus || item.status || 'Soon',
+          estimatedValue: item.currentBid || item.estimatedValue || item.startingBid || 0,
+        }))
+      : UPCOMING_AUCTIONS
+
   return (
     <aside className="space-y-5" aria-label="Dashboard widgets">
       <section className="rounded-xl border border-border/70 bg-white p-5 shadow-sm">
@@ -16,23 +27,27 @@ export default function RightSidebarWidgets() {
           <CalendarClock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold tracking-tight">Upcoming Auctions</h2>
         </div>
-        <ul className="space-y-3">
-          {UPCOMING_AUCTIONS.map((item) => (
-            <li key={item.id} className="flex items-center gap-3">
-              <img
-                src={item.image}
-                alt=""
-                className="h-11 w-11 rounded-lg object-cover ring-1 ring-border/70"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium tracking-tight">{item.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  Starts in {item.startsIn} · {formatCurrency(item.estimatedValue)}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {upcoming.length ? (
+          <ul className="space-y-3">
+            {upcoming.map((item) => (
+              <li key={item.id} className="flex items-center gap-3">
+                <img
+                  src={item.image}
+                  alt=""
+                  className="h-11 w-11 rounded-lg object-cover ring-1 ring-border/70"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium tracking-tight">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.startsIn} · {formatCurrency(item.estimatedValue)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No upcoming auctions yet.</p>
+        )}
       </section>
 
       <section

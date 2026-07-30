@@ -104,7 +104,7 @@ export default function LoginForm() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <Checkbox id="remember" {...register('remember')} />
             <Label
               htmlFor="remember"
@@ -112,7 +112,7 @@ export default function LoginForm() {
             >
               Remember me
             </Label>
-          </div>
+          </div> */}
 
           <Button type="submit" className="w-full rounded-lg" disabled={isSubmitting}>
             {isSubmitting && (

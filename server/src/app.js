@@ -8,6 +8,7 @@ const corsOptions = require('./config/cors')
 const { configurePassport } = require('./config/passport')
 const authRoutes = require('./routes/auth.routes')
 const auctionRoutes = require('./routes/auction.routes')
+const dashboardRoutes = require('./routes/dashboard.routes')
 const { notFoundHandler, errorHandler } = require('./middlewares/error.middleware')
 
 const app = express()
@@ -28,6 +29,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/auctions', auctionRoutes)
+app.use('/api/dashboard', dashboardRoutes)
 
 app.use(notFoundHandler)
 app.use(errorHandler)
