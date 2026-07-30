@@ -4,7 +4,7 @@
  */
 
 /**
- * Validates a incoming bid attempt against business and state rules.
+ * Validates an incoming bid attempt against business and state rules.
  * @param {Object} payload - Incoming bid payload
  * @param {string} payload.auctionId - Auction identifier
  * @param {number} payload.amount - Proposed bid amount

@@ -13,20 +13,22 @@ import CreateAuction from '@/features/auction/pages/CreateAuction'
 import EditAuction from '@/features/auction/pages/EditAuction'
 import MyAuctions from '@/features/auction/pages/MyAuctions'
 import AuctionRoom from '@/features/auction-room/pages/AuctionRoom'
+import Landing from '@/features/public/pages/Landing'
 import NotFound from '@/features/common/pages/NotFound'
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<AuctionList />} />
-          <Route path="/auctions" element={<AuctionList />} />
+        <Route path="/" element={<Landing />} />
 
-          <Route element={<GuestRoute />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-          </Route>
+        <Route element={<GuestRoute />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
+
+        <Route element={<MainLayout />}>
+          <Route path="/auctions" element={<AuctionList />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<Profile />} />

@@ -26,6 +26,7 @@ const SOCKET_EVENTS = {
   // Bid Socket Events
   BID_PLACE: 'bid:place',
   BID_VALIDATED: 'bid:validated',
+  BID_ACCEPTED: 'bid:accepted',
   BID_ERROR: 'bid:error',
 
   // Socket Broadcast Events
@@ -36,10 +37,12 @@ const SOCKET_EVENTS = {
   BROADCAST_ROOM_UPDATE: 'broadcast:room_update',
   BROADCAST_AUCTION_STATE: 'broadcast:auction_state',
 
+  // Auction Engine Events
+  AUCTION_STATE_UPDATE: 'auction:state_update',
+
   // Error Event
   ERROR: 'error',
 }
 
 module.exports = SOCKET_EVENTS
-
 
