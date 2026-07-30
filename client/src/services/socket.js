@@ -56,4 +56,15 @@ export const placeBid = (auctionId, amount) => {
   return client
 }
 
+export const joinMarketplace = () => {
+  const client = connectSocket()
+  client.emit(SOCKET_EVENTS.JOIN_MARKETPLACE)
+  return client
+}
+
+export const leaveMarketplace = () => {
+  if (!socket) return
+  socket.emit(SOCKET_EVENTS.LEAVE_MARKETPLACE)
+}
+
 export default getSocket

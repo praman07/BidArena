@@ -1,15 +1,15 @@
 const liveAuctionService = require('../services/liveAuction.service')
+const auctionBridge = require('../integration/auctionBridge.service')
+const auctionTimer = require('../auction-engine/TimerManager')
+const broadcastService = require('../auction-engine/BroadcastManager')
 const ApiError = require('../utils/ApiError')
-
-/** Active countdown intervals keyed by auction Mongo id. */
-const countdownTimers = new Map()
-/** Auctions already finalized to avoid duplicate end broadcasts. */
-const endedAuctions = new Set()
 
 const EVENTS = {
   JOIN: 'joinAuction',
   LEAVE: 'leaveAuction',
   PLACE_BID: 'placeBid',
+  JOIN_MARKETPLACE: 'joinMarketplace',
+  LEAVE_MARKETPLACE: 'leaveMarketplace',
   JOINED: 'auctionJoined',
   BID_PLACED: 'bidPlaced',
   UPDATED: 'auctionUpdated',
@@ -23,92 +23,26 @@ const emitError = (socket, message, code = 'ERROR') => {
   socket.emit(EVENTS.ERROR, { code, message })
 }
 
-const stopCountdown = (auctionId) => {
-  const timer = countdownTimers.get(auctionId)
-  if (timer) {
-    clearInterval(timer)
-    countdownTimers.delete(auctionId)
-  }
-}
-
-const broadcastEnd = async (io, auctionId) => {
-  if (endedAuctions.has(auctionId)) return
-  endedAuctions.add(auctionId)
-  stopCountdown(auctionId)
-
-  try {
-    const result = await liveAuctionService.endAuction(auctionId)
-    const room = liveAuctionService.roomName(auctionId)
-
-    io.to(room).emit(EVENTS.ENDED, {
-      auctionId,
-      status: 'ENDED',
-      auction: result.auction,
-    })
-
-    io.to(room).emit(EVENTS.COUNTDOWN, {
-      auctionId,
-      remainingSeconds: 0,
-    })
-
-    if (result.winner) {
-      io.to(room).emit(EVENTS.WINNER, result.winner)
-    } else {
-      io.to(room).emit(EVENTS.WINNER, {
-        auctionId,
-        winner: null,
-        winningAmount: 0,
-        amount: 0,
-        message: 'Auction ended with no bids',
-      })
-    }
-
-    io.to(room).emit(EVENTS.UPDATED, {
-      auctionId,
-      currentBid: result.auction.currentBid,
-      highestBidder: result.auction.highestBidder,
-      participants: result.auction.participantCount,
-      totalBids: result.auction.totalBidsCount,
-      status: 'ENDED',
-      remainingSeconds: 0,
-    })
-  } catch (error) {
-    console.error(`[AuctionSocket] Failed to end auction ${auctionId}:`, error.message)
-  }
-}
-
-const ensureCountdown = (io, auctionId, endTime) => {
-  if (countdownTimers.has(auctionId) || endedAuctions.has(auctionId)) return
-
-  const tick = async () => {
-    const remainingSeconds = liveAuctionService.remainingSecondsFor(endTime)
-    const room = liveAuctionService.roomName(auctionId)
-
-    io.to(room).emit(EVENTS.COUNTDOWN, {
-      auctionId,
-      remainingSeconds,
-    })
-
-    if (remainingSeconds <= 0) {
-      await broadcastEnd(io, auctionId)
-    }
-  }
-
-  // Immediate tick so joiners get a fresh value quickly
-  tick().catch((err) => console.error('[AuctionSocket] countdown tick error:', err.message))
-  const interval = setInterval(() => {
-    tick().catch((err) => console.error('[AuctionSocket] countdown tick error:', err.message))
-  }, 1000)
-
-  countdownTimers.set(auctionId, interval)
-}
-
 /**
- * Registers live auction room handlers for a connected socket.
+ * Domain A socket façade powered by Domain B auction-engine.
+ * Client event names stay unchanged (joinAuction / placeBid / …).
  */
 const registerAuctionSocket = (io, socket) => {
+  socket.on(EVENTS.JOIN_MARKETPLACE, () => {
+    socket.join(auctionBridge.MARKETPLACE_ROOM)
+  })
+
+  socket.on(EVENTS.LEAVE_MARKETPLACE, () => {
+    socket.leave(auctionBridge.MARKETPLACE_ROOM)
+  })
+
   socket.on(EVENTS.JOIN, async (payload = {}) => {
     try {
+      if (!socket.user?.id) {
+        emitError(socket, 'Authentication required to join an auction room', 'UNAUTHORIZED')
+        return
+      }
+
       const auctionId =
         typeof payload === 'string' ? payload : payload.auctionId || payload.id
 
@@ -120,41 +54,42 @@ const registerAuctionSocket = (io, socket) => {
       const room = liveAuctionService.roomName(auctionId)
       const alreadyJoined = socket.data.joinedAuctions?.has(auctionId)
 
+      // Hydrate Domain B engine from Mongo (handles server restart)
+      await auctionBridge.ensureRegistered(auctionId)
+
       if (!alreadyJoined) {
         socket.join(room)
         socket.data.joinedAuctions.add(auctionId)
+        auctionBridge.joinRoomPresence(auctionId, socket.id, socket.user)
       }
 
       const state = await liveAuctionService.getLiveAuctionState(auctionId)
+      const engineRemaining = auctionTimer.getTime(auctionId)
+      const remainingSeconds =
+        engineRemaining != null ? engineRemaining : state.remainingSeconds
 
       socket.emit(EVENTS.JOINED, {
         auctionId,
         ...state,
+        remainingSeconds,
         reconnected: Boolean(alreadyJoined),
       })
 
-      if (state.remainingSeconds <= 0 || state.status === 'ENDED') {
-        if (!endedAuctions.has(auctionId)) {
-          await broadcastEnd(io, auctionId)
-        } else {
-          socket.emit(EVENTS.ENDED, {
+      if (remainingSeconds <= 0 || state.status === 'ENDED') {
+        socket.emit(EVENTS.ENDED, {
+          auctionId,
+          status: 'ENDED',
+          auction: state.auction,
+        })
+        if (state.highestBidder) {
+          socket.emit(EVENTS.WINNER, {
             auctionId,
-            status: 'ENDED',
-            auction: state.auction,
+            winner: state.highestBidder,
+            winningAmount: state.currentBid,
+            amount: state.currentBid,
           })
-          if (state.highestBidder) {
-            socket.emit(EVENTS.WINNER, {
-              auctionId,
-              winner: state.highestBidder,
-              winningAmount: state.currentBid,
-              amount: state.currentBid,
-            })
-          }
         }
-        return
       }
-
-      ensureCountdown(io, auctionId, state.endTime)
     } catch (error) {
       const message =
         error instanceof ApiError ? error.message : 'Failed to join auction room'
@@ -171,6 +106,7 @@ const registerAuctionSocket = (io, socket) => {
       const room = liveAuctionService.roomName(auctionId)
       socket.leave(room)
       socket.data.joinedAuctions?.delete(auctionId)
+      auctionBridge.leaveRoomPresence(auctionId, socket.id)
     } catch (error) {
       console.error(`[AuctionSocket] leave failed:`, error.message)
     }
@@ -190,33 +126,45 @@ const registerAuctionSocket = (io, socket) => {
         return
       }
 
-      const result = await liveAuctionService.placeBid({
+      // Domain B engine validates + persists; Domain A events fan out to clients
+      const result = await auctionBridge.placeBidViaEngine({
         auctionId,
-        userId: socket.user.id,
+        user: socket.user,
         amount,
+        socketId: socket.id,
       })
 
       const room = liveAuctionService.roomName(auctionId)
+      const live = result.live
 
-      io.to(room).emit(EVENTS.BID_PLACED, {
+      const bidPlacedPayload = {
         auctionId,
         bid: result.bid,
-        currentBid: result.currentBid,
-        highestBidder: result.highestBidder,
-        participants: result.participants,
-        bids: result.bids,
-        status: result.status,
-      })
+        currentBid: live.currentBid,
+        highestBidder: live.highestBidder,
+        participants: live.participants,
+        bids: live.bids,
+        status: live.status === 'ACTIVE' ? 'LIVE' : live.status,
+      }
 
+      io.to(room).emit(EVENTS.BID_PLACED, bidPlacedPayload)
       io.to(room).emit(EVENTS.UPDATED, {
         auctionId,
-        currentBid: result.currentBid,
-        highestBidder: result.highestBidder,
-        participants: result.participants,
-        totalBids: result.bids.length,
-        status: result.status,
-        remainingSeconds: result.remainingSeconds,
-        bids: result.bids,
+        currentBid: live.currentBid,
+        highestBidder: live.highestBidder,
+        participants: live.participants,
+        totalBids: live.bids?.length || live.auction?.totalBidsCount,
+        status: bidPlacedPayload.status,
+        remainingSeconds: live.remainingSeconds,
+        bids: live.bids,
+      })
+
+      // Also notify Domain B broadcast layer / marketplace listeners
+      broadcastService.broadcastHighestBid(auctionId, {
+        currentHighestBid: live.currentBid,
+        highestBidder: live.highestBidder,
+        totalBidsCount: live.auction?.totalBidsCount,
+        status: bidPlacedPayload.status,
       })
     } catch (error) {
       const message =
@@ -226,7 +174,13 @@ const registerAuctionSocket = (io, socket) => {
   })
 
   socket.on('disconnect', () => {
-    socket.data.joinedAuctions?.clear()
+    const joined = socket.data.joinedAuctions
+    if (joined?.size) {
+      joined.forEach((auctionId) => {
+        auctionBridge.leaveRoomPresence(auctionId, socket.id)
+      })
+      joined.clear()
+    }
   })
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, Pencil, PlusCircle, Search, Trash2 } from 'lucide-react'
@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/useToast'
 import { cn } from '@/lib/utils'
+import useMarketplaceSocket from '@/hooks/useMarketplaceSocket'
 import EmptyState from '@/features/dashboard/components/EmptyState'
 import { TableSkeleton } from '@/features/dashboard/components/LoadingSkeleton'
 import { formatCurrency } from '@/features/dashboard/constants/dashboardData'
@@ -59,23 +60,69 @@ export default function MyAuctions() {
   const [deletingId, setDeletingId] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const loadAuctions = async () => {
-    setLoading(true)
-    setError('')
+  const loadAuctions = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const data = await getMyAuctionsRequest()
       setAuctions(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(err.message || 'Could not load your auctions.')
-      setAuctions([])
+      if (!silent) {
+        setError(err.message || 'Could not load your auctions.')
+        setAuctions([])
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadAuctions()
-  }, [])
+  }, [loadAuctions])
+
+  useMarketplaceSocket({
+    enabled: true,
+    onUpdate: useCallback(
+      (payload) => {
+        if (!payload?.auctionId) {
+          loadAuctions({ silent: true })
+          return
+        }
+        setAuctions((prev) => {
+          const idx = prev.findIndex((a) => a.id === payload.auctionId)
+          if (idx === -1) return prev
+          const next = [...prev]
+          const current = next[idx]
+          next[idx] = {
+            ...current,
+            currentBid: payload.currentBid ?? current.currentBid,
+            status:
+              payload.status === 'ENDED'
+                ? 'ENDED'
+                : payload.status || current.status,
+            displayStatus:
+              payload.status === 'ENDED'
+                ? 'ENDED'
+                : payload.type === 'bid'
+                  ? 'ACTIVE'
+                  : current.displayStatus,
+            highestBidder: payload.highestBidder || current.highestBidder,
+            totalBids:
+              payload.winningAmount != null
+                ? current.totalBids
+                : current.totalBids,
+          }
+          return next
+        })
+        if (payload.type === 'ended' || payload.type === 'winner') {
+          loadAuctions({ silent: true })
+        }
+      },
+      [loadAuctions]
+    ),
+  })
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()

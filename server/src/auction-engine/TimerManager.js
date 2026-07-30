@@ -35,19 +35,31 @@ class AuctionTimerService {
 
     const auctionEngineService = require('./AuctionEngine')
     const auctionRoomStore = require('./RecoveryManager')
-    const auctionHeatService = require('../services/auctionHeat.service')
+    let auctionHeatService = null
+    try {
+      auctionHeatService = require('../services/auctionHeat.service')
+    } catch {
+      auctionHeatService = null
+    }
 
     // Tick every 1 second (1000ms)
     timerState.intervalId = setInterval(() => {
       timerState.remainingTime -= 1
 
-      // Broadcast current time (legacy support)
+      // Broadcast current time (legacy + Domain A countdownUpdated)
       broadcastService.broadcastTime(auctionId, timerState.remainingTime)
 
       // --- Unified Live Statistics Heartbeat ---
       const state = auctionEngineService.getAuctionState(auctionId)
       const roomStats = auctionRoomStore.getRoomStats(auctionId)
-      
+
+      let heatScore = 0
+      try {
+        heatScore = auctionHeatService?.calculateHeat?.(auctionId) || 0
+      } catch {
+        heatScore = 0
+      }
+
       const liveStats = {
         auctionId,
         bidCount: state?.totalBidsCount || 0,
@@ -56,17 +68,13 @@ class AuctionTimerService {
         currentHighestBid: state?.currentHighestBid || 0,
         status: state?.status || 'UNKNOWN',
         remainingTime: timerState.remainingTime,
-        heatScore: auctionHeatService.calculateHeat(auctionId)
+        heatScore,
       }
       broadcastService.broadcastLiveStats(auctionId, liveStats)
 
       // Check if timer ended
       if (timerState.remainingTime <= 0) {
         this.stopTimer(auctionId)
-        broadcastService.broadcastTimerEnded(auctionId)
-        
-        // Lock auction and determine winner
-        const auctionEngineService = require('./AuctionEngine')
         auctionEngineService.closeAuction(auctionId)
       }
     }, 1000)

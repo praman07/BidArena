@@ -55,11 +55,20 @@ const validateBid = (payload = {}, auctionState = {}) => {
 
   // 3. Validate Auction Active State
   const normalizedStatus = String(status).toUpperCase()
-  if (normalizedStatus !== 'ACTIVE') {
+  if (!['ACTIVE', 'LIVE'].includes(normalizedStatus)) {
     return {
       isValid: false,
       code: 'AUCTION_NOT_ACTIVE',
       message: `Bidding is disabled. Auction status is '${normalizedStatus}'`,
+    }
+  }
+
+  // 3b. Seller cannot bid on own auction
+  if (auctionState.sellerId && String(auctionState.sellerId) === String(user.userId)) {
+    return {
+      isValid: false,
+      code: 'SELLER_OWN_BID',
+      message: 'You cannot bid on your own auction',
     }
   }
 
