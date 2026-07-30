@@ -7,7 +7,7 @@ import Login from '@/features/auth/pages/Login'
 import Register from '@/features/auth/pages/Register'
 import Profile from '@/features/profile/pages/Profile'
 import Dashboard from '@/features/dashboard/pages/Dashboard'
-import AuctionList from '@/features/auction/pages/AuctionList'
+import BrowseAuctions from '@/features/auction/pages/BrowseAuctions'
 import AuctionDetails from '@/features/auction/pages/AuctionDetails'
 import CreateAuction from '@/features/auction/pages/CreateAuction'
 import EditAuction from '@/features/auction/pages/EditAuction'
@@ -21,6 +21,7 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/auctions" element={<BrowseAuctions />} />
 
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<Login />} />
@@ -28,8 +29,6 @@ export default function AppRoutes() {
         </Route>
 
         <Route element={<MainLayout />}>
-          <Route path="/auctions" element={<AuctionList />} />
-
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<Profile />} />
             <Route path="/auctions/create" element={<CreateAuction />} />
