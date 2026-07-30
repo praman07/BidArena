@@ -82,6 +82,21 @@ const createAuction = async ({ sellerId, payload, files = [] }) => {
   })
 
   await auction.populate('seller', 'username email avatar createdAt')
+
+  // Domain B: register auction in engine + start timer when live
+  try {
+    const auctionBridge = require('../integration/auctionBridge.service')
+    const broadcastService = require('../auction-engine/BroadcastManager')
+    auctionBridge.registerAuction(auction)
+    broadcastService.emitMarketplace({
+      type: 'created',
+      auctionId: auction._id.toString(),
+      auction: auction.toPublicJSON(),
+    })
+  } catch (err) {
+    console.error('[createAuction] Failed to register auction engine:', err.message)
+  }
+
   return auction
 }
 
@@ -270,6 +285,17 @@ const updateAuction = async ({ auctionId, userId, payload }) => {
 
   await auction.save()
   await auction.populate('seller', 'username email avatar createdAt')
+
+  try {
+    const auctionBridge = require('../integration/auctionBridge.service')
+    const auctionTimer = require('../auction-engine/TimerManager')
+    // Re-sync Domain B state / timer after owner edits
+    auctionTimer.stopTimer(auction._id.toString())
+    auctionBridge.registerAuction(auction)
+  } catch (err) {
+    console.error('[updateAuction] Failed to sync auction engine:', err.message)
+  }
+
   return auction
 }
 

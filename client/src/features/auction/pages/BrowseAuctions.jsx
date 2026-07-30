@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
 import Navbar from '@/features/public/components/Navbar'
 import { Button } from '@/components/ui/button'
+import useMarketplaceSocket from '@/hooks/useMarketplaceSocket'
 import AuctionFilters from '../components/AuctionFilters'
 import FeaturedAuction from '../components/FeaturedAuction'
 import AuctionGrid from '../components/AuctionGrid'
@@ -26,24 +27,61 @@ export default function BrowseAuctions() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const loadAuctions = useCallback(async () => {
-    setLoading(true)
+  const loadAuctions = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const data = await getAuctionsRequest({ page: 1, limit: 100 })
       const mapped = (data.auctions || []).map(mapAuctionFromApi)
       setAuctions(mapped)
     } catch (err) {
-      setAuctions([])
-      setError(err.message || 'Could not load auctions. Please try again.')
+      if (!silent) {
+        setAuctions([])
+        setError(err.message || 'Could not load auctions. Please try again.')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     loadAuctions()
   }, [loadAuctions])
+
+  useMarketplaceSocket({
+    enabled: true,
+    onUpdate: useCallback(
+      (payload) => {
+        if (!payload?.auctionId) {
+          loadAuctions({ silent: true })
+          return
+        }
+        // Patch current bid / status in-place when possible
+        setAuctions((prev) => {
+          const idx = prev.findIndex((a) => a.id === payload.auctionId)
+          if (idx === -1) {
+            if (payload.type === 'created') {
+              loadAuctions({ silent: true })
+            }
+            return prev
+          }
+          const next = [...prev]
+          next[idx] = {
+            ...next[idx],
+            currentBid: payload.currentBid ?? next[idx].currentBid,
+            status:
+              payload.status === 'ENDED'
+                ? 'ENDED'
+                : payload.status === 'LIVE' || payload.type === 'bid'
+                  ? 'LIVE'
+                  : next[idx].status,
+          }
+          return next
+        })
+      },
+      [loadAuctions]
+    ),
+  })
 
   useEffect(() => {
     setPage(1)
