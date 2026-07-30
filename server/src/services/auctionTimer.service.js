@@ -33,12 +33,30 @@ class AuctionTimerService {
       intervalId: null
     }
 
+    const auctionEngineService = require('./auctionEngine.service')
+    const auctionRoomStore = require('./auctionRoomStore.service')
+
     // Tick every 1 second (1000ms)
     timerState.intervalId = setInterval(() => {
       timerState.remainingTime -= 1
 
-      // Broadcast current time
+      // Broadcast current time (legacy support)
       broadcastService.broadcastTime(auctionId, timerState.remainingTime)
+
+      // --- Unified Live Statistics Heartbeat ---
+      const state = auctionEngineService.getAuctionState(auctionId)
+      const roomStats = auctionRoomStore.getRoomStats(auctionId)
+      
+      const liveStats = {
+        auctionId,
+        bidCount: state?.totalBidsCount || 0,
+        activeBidders: roomStats?.userCount || 0,
+        spectatorCount: roomStats?.spectatorCount || 0,
+        currentHighestBid: state?.currentHighestBid || 0,
+        status: state?.status || 'UNKNOWN',
+        remainingTime: timerState.remainingTime
+      }
+      broadcastService.broadcastLiveStats(auctionId, liveStats)
 
       // Check if timer ended
       if (timerState.remainingTime <= 0) {
