@@ -20,4 +20,15 @@ process.on('unhandledRejection', (reason) => {
 
 startServer()
 
+// Handle graceful shutdown for server restarts
+const gracefulShutdown = () => {
+  console.log('Initiating graceful shutdown...')
+  const auctionTimerService = require('./services/auctionTimer.service')
+  auctionTimerService.cleanupAll()
+  process.exit(0)
+}
+
+process.on('SIGINT', gracefulShutdown)
+process.on('SIGTERM', gracefulShutdown)
+
 module.exports = { app, startServer }
