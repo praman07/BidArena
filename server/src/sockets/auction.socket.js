@@ -9,7 +9,7 @@ const auctionTimerService = require('../auction-engine/TimerManager')
  * @param {import('socket.io').Socket} socket - Socket connection instance
  */
 const registerAuctionRoomHandlers = (io, socket) => {
-  socket.on(SOCKET_EVENTS.AUCTION_JOIN, (payload) => {
+  socket.on(SOCKET_EVENTS.AUCTION_JOIN, async (payload) => {
     try {
       const auctionId = typeof payload === 'string' ? payload : payload?.auctionId
       const userPayload = typeof payload === 'object' ? payload?.user || payload : {}
@@ -18,6 +18,8 @@ const registerAuctionRoomHandlers = (io, socket) => {
         socket.emit(SOCKET_EVENTS.ERROR, { message: 'auctionId is required to join an auction room' })
         return
       }
+
+      await auctionEngineService.hydrateAuction(auctionId)
 
       const roomName = `auction:${auctionId}`
       socket.join(roomName)
