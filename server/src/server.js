@@ -2,12 +2,21 @@ const app = require('./app')
 const connectDB = require('./config/db')
 const env = require('./config/env')
 
-// TODO: Connect database and start HTTP server
 const startServer = async () => {
-  // await connectDB()
-  // const PORT = env.PORT || 5000
-  // app.listen(PORT, () => {})
+  try {
+    await connectDB()
+    app.listen(env.PORT, () => {
+      console.log(`BidArena API listening on port ${env.PORT} [${env.NODE_ENV}]`)
+    })
+  } catch (error) {
+    console.error('Failed to start server:', error.message)
+    process.exit(1)
+  }
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason)
+})
 
 startServer()
 

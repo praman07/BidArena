@@ -1,7 +1,36 @@
-// TODO: Load and validate environment variables
+const path = require('path')
+const dotenv = require('dotenv')
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+
+const required = ['MONGO_URI', 'JWT_SECRET']
+
 const env = {
-  // PORT: process.env.PORT,
-  // MONGODB_URI: process.env.MONGODB_URI,
+  PORT: Number(process.env.PORT) || 5000,
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+
+  MONGO_URI: process.env.MONGO_URI,
+
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  COOKIE_SECRET: process.env.COOKIE_SECRET || process.env.JWT_SECRET,
+
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL:
+    process.env.GOOGLE_CALLBACK_URL ||
+    'http://localhost:5000/api/auth/google/callback',
+}
+
+env.isProduction = env.NODE_ENV === 'production'
+env.googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
+
+const missing = required.filter((key) => !env[key])
+if (missing.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${missing.join(', ')}. Copy .env.example to .env and fill them in.`
+  )
 }
 
 module.exports = env

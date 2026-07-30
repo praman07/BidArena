@@ -1,4 +1,1 @@
-// TODO: Implement useAuth hook
-export default function useAuth() {
-  return {}
-}
+export { default } from '@/features/auth/hooks/useAuth'
