@@ -1,5 +1,5 @@
 const auctionEngineService = require('../auction-engine/AuctionEngine')
-const auctionRoomStore = require('../auction-engine/RecoveryManager')
+// auctionRoomStore removed, we will get stats from Socket.IO natively if needed
 
 /**
  * Auction Heat Service
@@ -29,7 +29,16 @@ class AuctionHeatService {
    */
   calculateHeat(auctionId) {
     const state = auctionEngineService.getAuctionState(auctionId)
-    const roomStats = auctionRoomStore.getRoomStats(auctionId)
+    let activeBidders = 0;
+    let spectators = 0;
+    try {
+      const sockets = require('../sockets');
+      const io = sockets.getIO();
+      const room = io.sockets.adapter.rooms.get(`auction:${auctionId}`);
+      activeBidders = room ? room.size : 0;
+    } catch (err) {
+      // Ignore if socket.io not fully initialized
+    }
 
     const now = new Date()
     const sixtySecondsAgo = new Date(now.getTime() - 60000)
@@ -57,9 +66,7 @@ class AuctionHeatService {
       recentChatsCount = recentChats.length
     }
 
-    // 3. Extract Population
-    const activeBidders = roomStats ? roomStats.userCount : 0
-    const spectators = roomStats ? roomStats.spectatorCount : 0
+    // Population calculated above
 
     // 4. Calculate Raw Score
     // Algorithm: Bids (5x), Bidders (3x), Chats (2x), Spectators (1x)
