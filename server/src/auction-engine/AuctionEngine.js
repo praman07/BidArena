@@ -61,6 +61,55 @@ class AuctionEngineService {
   }
 
   /**
+   * Hydrates the authoritative auction state from MongoDB if it doesn't exist in memory.
+   * @param {string} auctionId
+   */
+  async hydrateAuction(auctionId) {
+    if (this.auctions.has(auctionId)) return;
+
+    try {
+      const auction = await Auction.findOne({ auctionId }).lean();
+      if (!auction) {
+        this.initAuction({ auctionId });
+        return;
+      }
+
+      const bids = await Bid.find({ auctionId }).sort({ timestamp: -1 }).limit(50).lean();
+
+      const startingPrice = Number(auction.startingPrice) || Number(auction.startingBid) || 0;
+      const minIncrement = Number(auction.minIncrement) || Number(auction.bidIncrement) || 1;
+      const currentHighestBid = Number(auction.currentHighestBid) || Number(auction.currentBid) || startingPrice;
+
+      this.auctions.set(auctionId, {
+        auctionId,
+        title: auction.title || `Auction ${auctionId}`,
+        status: auction.status || 'ACTIVE',
+        startingPrice,
+        minIncrement,
+        currentHighestBid,
+        highestBidder: auction.highestBidder ? { userId: auction.highestBidder } : null,
+        totalBidsCount: auction.totalBidsCount || 0,
+        lastBidAt: auction.lastBidAt || null,
+        bidHistory: bids || [],
+        createdAt: auction.createdAt || new Date(),
+      });
+
+      if (auction.status === 'ACTIVE' && auction.endTime) {
+        const remaining = Math.floor((new Date(auction.endTime).getTime() - Date.now()) / 1000);
+        if (remaining > 0) {
+          const auctionTimerService = require('./TimerManager');
+          auctionTimerService.startTimer(auctionId, remaining);
+        } else {
+          this.closeAuction(auctionId);
+        }
+      }
+    } catch (err) {
+      console.error(`[AuctionEngine] Failed to hydrate auction ${auctionId}:`, err);
+      this.initAuction({ auctionId });
+    }
+  }
+
+  /**
    * Gets the authoritative state snapshot of an auction.
    * @param {string} auctionId
    * @returns {Object|null}
@@ -82,6 +131,8 @@ class AuctionEngineService {
    */
   async processBid(auctionId, bidPayload = {}) {
     if (!auctionId) throw new Error('auctionId is required for bid processing')
+
+    await this.hydrateAuction(auctionId);
 
     // Retrieve or initialize the Promise queue for this auction
     const currentQueue = this.queues.get(auctionId) || Promise.resolve()
