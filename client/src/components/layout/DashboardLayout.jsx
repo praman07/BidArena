@@ -3,10 +3,11 @@ import Navbar from './Navbar'
 
 export default function DashboardLayout() {
   return (
-    <div>
-      <div>DashboardLayout</div>
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <Outlet />
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <Outlet />
+      </main>
     </div>
   )
 }

@@ -1,12 +1,20 @@
 /**
- * Bid Validation Rules
- * Domain B: Auction Engine
+ * Bid Validation Rules and Service Logic
+ * Domain B: Real-Time Engine & Auction Validation
  */
 
 /**
- * Validates a bid payload against current auction state.
- * @param {Object} payload - { auctionId, amount, user }
- * @param {Object} auctionState - { status, currentHighestBid, currentHighestBidderId, minIncrement, startingPrice }
+ * Validates an incoming bid attempt against business and state rules.
+ * @param {Object} payload - Incoming bid payload
+ * @param {string} payload.auctionId - Auction identifier
+ * @param {number} payload.amount - Proposed bid amount
+ * @param {Object} payload.user - Authenticated user object { userId, username, role }
+ * @param {Object} auctionState - Current auction state context
+ * @param {string} auctionState.status - Auction status ('ACTIVE', 'ENDED', 'UPCOMING', etc.)
+ * @param {number} auctionState.currentHighestBid - Current top bid amount
+ * @param {string|null} auctionState.currentHighestBidderId - User ID of current top bidder
+ * @param {number} auctionState.minIncrement - Minimum required bid increment
+ * @param {number} auctionState.startingPrice - Starting price of auction
  * @returns {{ isValid: boolean, code?: string, message?: string, details?: Object }}
  */
 const validateBid = (payload = {}, auctionState = {}) => {
@@ -19,7 +27,7 @@ const validateBid = (payload = {}, auctionState = {}) => {
     startingPrice = 0,
   } = auctionState
 
-  // 1. Validate User
+  // 1. Validate Authenticated User
   if (!user || !user.userId) {
     return {
       isValid: false,
@@ -45,7 +53,7 @@ const validateBid = (payload = {}, auctionState = {}) => {
     }
   }
 
-  // 3. Validate Active Status
+  // 3. Validate Auction Active State
   const normalizedStatus = String(status).toUpperCase()
   if (normalizedStatus !== 'ACTIVE') {
     return {
@@ -55,7 +63,7 @@ const validateBid = (payload = {}, auctionState = {}) => {
     }
   }
 
-  // 4. Validate Amount
+  // 4. Validate Numeric Bid Amount
   const bidAmount = Number(amount)
   if (isNaN(bidAmount) || bidAmount <= 0) {
     return {
@@ -65,7 +73,7 @@ const validateBid = (payload = {}, auctionState = {}) => {
     }
   }
 
-  // 5. Reject Duplicate Top Bidder
+  // 5. Reject Duplicate Bids (Consecutive bidding by current top bidder)
   if (currentHighestBidderId && currentHighestBidderId === user.userId) {
     return {
       isValid: false,
@@ -88,7 +96,7 @@ const validateBid = (payload = {}, auctionState = {}) => {
     }
   }
 
-  // 8. Validate Minimum Increment
+  // 8. Validate Minimum Increment requirement
   if (bidAmount < minRequiredBid) {
     return {
       isValid: false,
@@ -98,6 +106,7 @@ const validateBid = (payload = {}, auctionState = {}) => {
     }
   }
 
+  // All validation rules passed successfully
   return {
     isValid: true,
     details: {

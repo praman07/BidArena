@@ -23,10 +23,13 @@ const SOCKET_EVENTS = {
   AUCTION_USER_LEFT: 'auction:user_left',
   AUCTION_ROOM_STATS: 'auction:room_stats',
 
-  // Auction Engine & Bid Socket Events
+  // Bid Socket Events
   BID_PLACE: 'bid:place',
+  BID_VALIDATED: 'bid:validated',
   BID_ACCEPTED: 'bid:accepted',
   BID_ERROR: 'bid:error',
+
+  // Auction Engine Events
   AUCTION_STATE_UPDATE: 'auction:state_update',
 
   // Error Event
@@ -34,4 +37,3 @@ const SOCKET_EVENTS = {
 }
 
 module.exports = SOCKET_EVENTS
-
