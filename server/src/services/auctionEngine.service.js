@@ -41,6 +41,20 @@ class AuctionEngineService {
         bidHistory: [],
         createdAt: new Date(),
       })
+
+      // --- ASYNC DATABASE PERSISTENCE ---
+      Promise.all([
+        Timeline.create({
+          auctionId,
+          eventType: 'AUCTION_CREATED',
+          details: { startingPrice: startingPrice, minIncrement: minIncrement },
+        }),
+        Timeline.create({
+          auctionId,
+          eventType: 'AUCTION_STARTED',
+          details: { status: 'ACTIVE' },
+        })
+      ]).catch(err => console.error(`[AuctionEngine] Failed to persist creation timeline for ${auctionId}:`, err))
     }
 
     return this.auctions.get(auctionId)
@@ -241,11 +255,18 @@ class AuctionEngineService {
       broadcastService.broadcastAuctionWinner(auctionId, winnerPayload)
 
       // Async database persistence for winner
-      Winner.create({
-        auctionId: state.auctionId,
-        userId: state.highestBidder.userId,
-        winningBid: state.currentHighestBid,
-      }).catch(err => console.error(`[AuctionEngine] Failed to persist winner for ${auctionId}:`, err))
+      Promise.all([
+        Winner.create({
+          auctionId: state.auctionId,
+          userId: state.highestBidder.userId,
+          winningBid: state.currentHighestBid,
+        }),
+        Timeline.create({
+          auctionId,
+          eventType: 'WINNER_SELECTED',
+          details: { winnerUserId: state.highestBidder.userId, winningBid: state.currentHighestBid }
+        })
+      ]).catch(err => console.error(`[AuctionEngine] Failed to persist winner for ${auctionId}:`, err))
     } else {
       console.log(`[AuctionEngine] Auction ${auctionId} closed with no winner.`)
     }
@@ -264,6 +285,20 @@ class AuctionEngineService {
     ]).catch(err => console.error(`[AuctionEngine] Failed to persist closure for ${auctionId}:`, err))
 
     return state
+  }
+
+  /**
+   * Logs a payment status update to the timeline.
+   * @param {string} auctionId
+   * @param {string} status - e.g., 'PENDING', 'COMPLETED', 'FAILED'
+   * @param {Object} metadata - Optional additional details
+   */
+  logPaymentStatus(auctionId, status, metadata = {}) {
+    Timeline.create({
+      auctionId,
+      eventType: 'PAYMENT_STATUS_UPDATED',
+      details: { status, ...metadata }
+    }).catch(err => console.error(`[AuctionEngine] Failed to persist payment status for ${auctionId}:`, err))
   }
 }
 
