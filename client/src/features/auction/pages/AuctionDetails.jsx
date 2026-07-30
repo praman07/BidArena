@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, RefreshCw } from 'lucide-react'
 import Navbar from '@/features/public/components/Navbar'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import ProductGallery from '../components/ProductGallery'
 import AuctionSummary from '../components/AuctionSummary'
@@ -11,28 +12,49 @@ import SellerCard from '../components/SellerCard'
 import Specifications from '../components/Specifications'
 import RelatedAuctions from '../components/RelatedAuctions'
 import StickyBidCard from '../components/StickyBidCard'
+import DetailsLoadingSkeleton from '../components/DetailsLoadingSkeleton'
+import { getAuctionByIdRequest } from '../services/auctionService'
 import {
   DETAIL_TABS,
-  getAuctionDetails,
-  getRelatedAuctions,
+  mapAuctionDetailsFromApi,
+  mapRelatedAuctionsFromApi,
 } from '../constants/auctionDetailsData'
 
 const Footer = lazy(() => import('@/features/public/components/Footer'))
 
 export default function AuctionDetails() {
   const { id } = useParams()
-  const auction = useMemo(() => getAuctionDetails(id), [id])
-  const related = useMemo(() => getRelatedAuctions(id, 4), [id])
-
+  const [auction, setAuction] = useState(null)
+  const [related, setRelated] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('description')
   const [wishlisted, setWishlisted] = useState(false)
   const [showSticky, setShowSticky] = useState(false)
+
+  const loadAuction = useCallback(async () => {
+    if (!id) return
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getAuctionByIdRequest(id)
+      setAuction(mapAuctionDetailsFromApi(data.auction))
+      setRelated(mapRelatedAuctionsFromApi(data.relatedAuctions || []))
+    } catch (err) {
+      setAuction(null)
+      setRelated([])
+      setError(err.message || 'Could not load this auction. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
     window.scrollTo(0, 0)
     setActiveTab('description')
     setWishlisted(false)
-  }, [id])
+    loadAuction()
+  }, [loadAuction])
 
   useEffect(() => {
     const onScroll = () => setShowSticky(window.scrollY > 520)
@@ -50,37 +72,68 @@ export default function AuctionDetails() {
       }
       await navigator.clipboard.writeText(url)
     } catch {
-      // User cancelled share or clipboard unavailable — no-op for static demo.
+      // User cancelled share or clipboard unavailable — no-op.
     }
   }
 
-  if (!auction) {
-    return (
-      <div className="bg-white text-foreground">
-        <Navbar />
-        <main className="mx-auto max-w-6xl px-4 pb-20 pt-32 sm:px-6">
-          <h1 className="text-3xl font-semibold tracking-tight">Auction not found</h1>
-          <p className="mt-3 text-muted-foreground">
-            This listing may have ended or the link is incorrect.
-          </p>
-          <Link
-            to="/auctions"
-            className="mt-6 inline-flex text-sm font-medium underline-offset-4 hover:underline"
-          >
-            Back to Browse Auctions
-          </Link>
-        </main>
-        <Suspense fallback={null}>
-          <Footer />
-        </Suspense>
-      </div>
+  const shell = (content) => (
+    <div className="bg-white text-foreground">
+      <Navbar />
+      {content}
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
+    </div>
+  )
+
+  if (loading) {
+    return shell(
+      <main className="border-b border-border/70 bg-neutral-50/60 pt-28 sm:pt-32">
+        <DetailsLoadingSkeleton />
+      </main>
     )
   }
 
-  return (
-    <div className="bg-white text-foreground">
-      <Navbar />
+  if (error) {
+    return shell(
+      <main className="mx-auto max-w-6xl px-4 pb-20 pt-32 sm:px-6">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-neutral-50/60 px-6 py-16 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">Something went wrong</h1>
+          <p className="mt-2 max-w-md text-muted-foreground">{error}</p>
+          <Button type="button" className="mt-6 rounded-lg" onClick={loadAuction}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Retry
+          </Button>
+          <Link
+            to="/auctions"
+            className="mt-4 text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Back to Browse Auctions
+          </Link>
+        </div>
+      </main>
+    )
+  }
 
+  if (!auction) {
+    return shell(
+      <main className="mx-auto max-w-6xl px-4 pb-20 pt-32 sm:px-6">
+        <h1 className="text-3xl font-semibold tracking-tight">Auction not found</h1>
+        <p className="mt-3 text-muted-foreground">
+          This listing may have ended or the link is incorrect.
+        </p>
+        <Link
+          to="/auctions"
+          className="mt-6 inline-flex text-sm font-medium underline-offset-4 hover:underline"
+        >
+          Back to Browse Auctions
+        </Link>
+      </main>
+    )
+  }
+
+  return shell(
+    <>
       <main className="pb-28 lg:pb-24">
         <div className="border-b border-border/70 bg-neutral-50/60 pt-28 sm:pt-32">
           <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6">
@@ -151,11 +204,7 @@ export default function AuctionDetails() {
               ))}
             </div>
 
-            <div
-              role="tabpanel"
-              aria-labelledby={`tab-${activeTab}`}
-              className="min-h-[220px]"
-            >
+            <div role="tabpanel" aria-labelledby={`tab-${activeTab}`} className="min-h-[220px]">
               {activeTab === 'description' && (
                 <motion.div
                   key="description"
@@ -164,9 +213,11 @@ export default function AuctionDetails() {
                   transition={{ duration: 0.3 }}
                   className="max-w-3xl space-y-4 text-[15px] leading-7 text-muted-foreground"
                 >
-                  {auction.description.split('\n\n').map((paragraph) => (
-                    <p key={paragraph.slice(0, 32)}>{paragraph}</p>
-                  ))}
+                  {(auction.description || 'No description provided.')
+                    .split('\n\n')
+                    .map((paragraph) => (
+                      <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+                    ))}
                 </motion.div>
               )}
 
@@ -210,10 +261,6 @@ export default function AuctionDetails() {
       </main>
 
       <StickyBidCard auction={auction} visible={showSticky} />
-
-      <Suspense fallback={null}>
-        <Footer />
-      </Suspense>
-    </div>
+    </>
   )
 }

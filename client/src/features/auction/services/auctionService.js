@@ -49,3 +49,8 @@ export const getAuctionsRequest = async ({ page = 1, limit = 100 } = {}) => {
   })
   return data.data
 }
+
+export const getAuctionByIdRequest = async (id) => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.DETAIL(id))
+  return data.data
+}

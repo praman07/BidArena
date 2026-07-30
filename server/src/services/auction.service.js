@@ -1,5 +1,7 @@
 const crypto = require('crypto')
+const mongoose = require('mongoose')
 const Auction = require('../models/Auction')
+const Bid = require('../models/Bid')
 const uploadService = require('./upload.service')
 const ApiError = require('../utils/ApiError')
 
@@ -13,8 +15,26 @@ const resolveStatus = (startTime, endTime, { asDraft = false } = {}) => {
   if (asDraft) return 'DRAFT'
   const now = Date.now()
   if (now >= endTime.getTime()) return 'ENDED'
-  // Published, browseable auctions are ACTIVE (display LIVE/UPCOMING from dates on client).
   return 'ACTIVE'
+}
+
+const mapBid = (bid, index) => {
+  const user = bid.userId
+  return {
+    id: bid._id.toString(),
+    bidId: bid.bidId,
+    amount: bid.amount,
+    time: bid.timestamp || bid.createdAt,
+    user:
+      user && typeof user === 'object'
+        ? {
+            id: user._id?.toString?.() || user.id,
+            username: user.username,
+            avatar: user.avatar,
+          }
+        : { id: String(bid.userId), username: 'Bidder', avatar: null },
+    status: index === 0 ? 'Leading' : 'Outbid',
+  }
 }
 
 const createAuction = async ({ sellerId, payload, files = [] }) => {
@@ -61,7 +81,7 @@ const createAuction = async ({ sellerId, payload, files = [] }) => {
     minIncrement: bidIncrement,
   })
 
-  await auction.populate('seller', 'username email avatar')
+  await auction.populate('seller', 'username email avatar createdAt')
   return auction
 }
 
@@ -74,7 +94,7 @@ const getAllAuctions = async ({ page = 1, limit = 12 } = {}) => {
 
   const [auctions, total] = await Promise.all([
     Auction.find(filter)
-      .populate('seller', 'username email avatar')
+      .populate('seller', 'username email avatar createdAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum),
@@ -92,7 +112,48 @@ const getAllAuctions = async ({ page = 1, limit = 12 } = {}) => {
   }
 }
 
+const getAuctionById = async (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.notFound('Auction not found')
+  }
+
+  const auction = await Auction.findById(id).populate(
+    'seller',
+    'username email avatar createdAt'
+  )
+
+  if (!auction) {
+    throw ApiError.notFound('Auction not found')
+  }
+
+  const [bids, related] = await Promise.all([
+    Bid.find({
+      $or: [{ auctionId: auction.auctionId }, { auctionId: auction._id.toString() }],
+    })
+      .populate('userId', 'username avatar')
+      .sort({ amount: -1, timestamp: -1, createdAt: -1 })
+      .limit(50),
+    Auction.find({
+      status: 'ACTIVE',
+      category: auction.category,
+      _id: { $ne: auction._id },
+    })
+      .populate('seller', 'username email avatar createdAt')
+      .sort({ createdAt: -1 })
+      .limit(4),
+  ])
+
+  return {
+    auction: {
+      ...auction.toPublicJSON(),
+      bids: bids.map(mapBid),
+    },
+    relatedAuctions: related.map((item) => item.toPublicJSON()),
+  }
+}
+
 module.exports = {
   createAuction,
   getAllAuctions,
+  getAuctionById,
 }
