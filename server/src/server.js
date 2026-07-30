@@ -21,10 +21,41 @@ const startServer = async () => {
     })
 
     // 5. Handle Graceful Shutdown
-    const shutdown = () => {
+    const shutdown = async () => {
       console.log('Shutting down server gracefully...')
+      
+      // 1. Stop all running auction timers
+      try {
+        const timerManager = require('./auction-engine/TimerManager');
+        timerManager.cleanupAll();
+      } catch (err) {
+        console.error('Failed to cleanup timers:', err.message);
+      }
+
+      // 2. Close Socket.IO
+      try {
+        const sockets = require('./sockets');
+        if (sockets.getIO) {
+          sockets.getIO().close();
+          console.log('Socket.IO closed.');
+        }
+      } catch (err) {
+        console.error('Failed to close Socket.IO:', err.message);
+      }
+
+      // 3. Close MongoDB connection
+      try {
+        const mongoose = require('mongoose');
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed.');
+      } catch (err) {
+        console.error('Failed to close MongoDB:', err.message);
+      }
+
+      // 4. Close HTTP server
       server.close(() => {
         console.log('HTTP Server closed.')
+        // 5. Exit process
         process.exit(0)
       })
     }
