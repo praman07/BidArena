@@ -2,6 +2,10 @@ const { Server } = require('socket.io')
 const corsOptions = require('../config/cors')
 const SOCKET_EVENTS = require('../constants/socket.events')
 const registerRoomHandlers = require('./handlers/room.handler')
+const {
+  registerAuctionRoomHandlers,
+  handleAuctionDisconnectCleanup,
+} = require('./handlers/auctionRoom.handler')
 
 let io = null
 
@@ -20,10 +24,12 @@ const initSocket = (server) => {
 
     // Register room event handlers
     registerRoomHandlers(io, socket)
+    registerAuctionRoomHandlers(io, socket)
 
-    // Log disconnection
+    // Handle disconnect and perform cleanup
     socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
       console.log(`[Socket] Client disconnected: ${socket.id} (Reason: ${reason})`)
+      handleAuctionDisconnectCleanup(io, socket)
     })
   })
 
