@@ -7,6 +7,7 @@ const {
   handleAuctionDisconnectCleanup,
 } = require('./handlers/auctionRoom.handler')
 const registerBidHandlers = require('./handlers/bid.handler')
+const registerBroadcastHandlers = require('./handlers/broadcast.handler')
 const registerAuctionEngineHandlers = require('./handlers/auctionEngine.handler')
 
 let io = null
@@ -28,6 +29,7 @@ const initSocket = (server) => {
     registerRoomHandlers(io, socket)
     registerAuctionRoomHandlers(io, socket)
     registerBidHandlers(io, socket)
+    registerBroadcastHandlers(io, socket)
     registerAuctionEngineHandlers(io, socket)
 
     // Handle disconnect and perform cleanup

@@ -29,6 +29,14 @@ const SOCKET_EVENTS = {
   BID_ACCEPTED: 'bid:accepted',
   BID_ERROR: 'bid:error',
 
+  // Socket Broadcast Events
+  BROADCAST_HIGHEST_BID: 'broadcast:highest_bid',
+  BROADCAST_STATS: 'broadcast:stats',
+  BROADCAST_BIDDER_COUNT: 'broadcast:bidder_count',
+  BROADCAST_SPECTATORS: 'broadcast:spectators',
+  BROADCAST_ROOM_UPDATE: 'broadcast:room_update',
+  BROADCAST_AUCTION_STATE: 'broadcast:auction_state',
+
   // Auction Engine Events
   AUCTION_STATE_UPDATE: 'auction:state_update',
 
@@ -37,3 +45,4 @@ const SOCKET_EVENTS = {
 }
 
 module.exports = SOCKET_EVENTS
+
