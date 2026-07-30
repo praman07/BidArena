@@ -36,6 +36,8 @@ const SOCKET_EVENTS = {
   BROADCAST_SPECTATORS: 'broadcast:spectators',
   BROADCAST_ROOM_UPDATE: 'broadcast:room_update',
   BROADCAST_AUCTION_STATE: 'broadcast:auction_state',
+  BROADCAST_TIME_UPDATE: 'broadcast:time_update',
+  BROADCAST_TIMER_ENDED: 'broadcast:timer_ended',
 
   // Auction Engine Events
   AUCTION_STATE_UPDATE: 'auction:state_update',

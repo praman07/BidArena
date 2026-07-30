@@ -129,6 +129,33 @@ class BroadcastService {
     getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_STATE, payload)
     console.log(`[Broadcast] Full auction state broadcast to ${roomName}`)
   }
+  /**
+   * Broadcast remaining time for an auction to the room
+   * @param {string} auctionId
+   * @param {number} remainingTime - Time left in seconds
+   */
+  broadcastTime(auctionId, remainingTime) {
+    if (!auctionId) return
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      remainingTime: Math.max(0, Number(remainingTime) || 0),
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIME_UPDATE, payload)
+  }
+
+  /**
+   * Broadcast that an auction's timer has ended
+   * @param {string} auctionId
+   */
+  broadcastTimerEnded(auctionId) {
+    if (!auctionId) return
+    const roomName = this.getRoomName(auctionId)
+    
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIMER_ENDED, { auctionId })
+    console.log(`[Broadcast] Timer ended broadcast to ${roomName}`)
+  }
 }
 
 // Export singleton instance of BroadcastService
