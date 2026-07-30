@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Gavel, ShieldCheck, Timer, TrendingUp } from 'lucide-react'
+import { ShieldCheck, Timer, TrendingUp } from 'lucide-react'
+import BrandLogo from '@/components/common/BrandLogo'
 
 const highlights = [
   {
@@ -23,14 +23,8 @@ const highlights = [
 export default function AuthLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left panel — branding */}
       <aside className="relative hidden w-1/2 flex-col justify-between bg-neutral-950 p-12 text-white lg:flex">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="BidArena home">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
-            <Gavel className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <span className="text-lg font-semibold tracking-tight">BidArena</span>
-        </Link>
+        <BrandLogo inverted imgClassName="h-10" />
 
         <div className="max-w-md">
           <motion.h1
@@ -77,7 +71,6 @@ export default function AuthLayout({ children }) {
         </p>
       </aside>
 
-      {/* Right panel — form content */}
       <main className="flex w-full items-center justify-center px-4 py-10 sm:px-8 lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -85,19 +78,10 @@ export default function AuthLayout({ children }) {
           transition={{ duration: 0.4, ease: 'easeOut' }}
           className="w-full max-w-md"
         >
-          {/* Mobile-only brand mark */}
-          <Link
-            to="/"
-            className="mb-8 flex items-center justify-center gap-2 lg:hidden"
-            aria-label="BidArena home"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-950 text-white">
-              <Gavel className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span className="text-lg font-semibold tracking-tight text-foreground">
-              BidArena
-            </span>
-          </Link>
+          <div className="mb-8 flex justify-center lg:hidden">
+            <BrandLogo imgClassName="h-10" />
+          </div>
+
           {children}
         </motion.div>
       </main>

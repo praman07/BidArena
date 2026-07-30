@@ -34,9 +34,22 @@ export default function AuctionPreviewCard({
   isSubmitting,
   isDraftSaving,
   mode = 'create',
+  isDraft = false,
   onCancel,
 }) {
   const isEdit = mode === 'edit'
+  const showDraftActions = !isEdit || isDraft
+  const primaryLabel = (() => {
+    if (isSubmitting) {
+      if (isEdit && isDraft) return 'Publishing…'
+      if (isEdit) return 'Saving…'
+      return 'Publishing…'
+    }
+    if (isEdit && isDraft) return 'Publish Auction'
+    if (isEdit) return 'Save Changes'
+    return 'Publish Auction'
+  })()
+
   return (
     <aside className="rounded-xl border border-border/70 bg-white p-5 shadow-sm lg:sticky lg:top-24">
       <div className="flex items-center justify-between gap-2">
@@ -99,29 +112,12 @@ export default function AuctionPreviewCard({
           type="button"
           className="w-full rounded-xl"
           size="lg"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isDraftSaving}
           onClick={onPublish}
         >
-          {isEdit
-            ? isSubmitting
-              ? 'Saving…'
-              : 'Save Changes'
-            : isSubmitting
-              ? 'Publishing…'
-              : 'Publish Auction'}
+          {primaryLabel}
         </Button>
-        {isEdit ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full rounded-xl"
-            size="lg"
-            disabled={isSubmitting}
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        ) : (
+        {showDraftActions && onSaveDraft ? (
           <Button
             type="button"
             variant="outline"
@@ -132,7 +128,19 @@ export default function AuctionPreviewCard({
           >
             {isDraftSaving ? 'Saving draft…' : 'Save Draft'}
           </Button>
-        )}
+        ) : null}
+        {isEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-xl"
+            size="lg"
+            disabled={isSubmitting || isDraftSaving}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        ) : null}
       </div>
     </aside>
   )

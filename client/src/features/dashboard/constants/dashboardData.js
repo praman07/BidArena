@@ -20,12 +20,18 @@ export const DASHBOARD_USER = {
 }
 
 export const SIDEBAR_NAV = [
-  { label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard' },
-  { label: 'Browse Auctions', href: '/auctions', icon: 'Compass' },
-  { label: 'My Auctions', href: '/my-auctions', icon: 'Gavel' },
-  { label: 'Create Auction', href: '/auctions/create', icon: 'PlusCircle' },
-  { label: 'Live Auctions', href: '/auctions', icon: 'Radio' },
-  { label: 'Profile', href: '/profile', icon: 'User' },
+  { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard', match: 'dashboard' },
+  { id: 'browse', label: 'Browse Auctions', href: '/auctions', icon: 'Compass', match: 'browse' },
+  { id: 'my-auctions', label: 'My Auctions', href: '/my-auctions', icon: 'Gavel', match: 'my-auctions' },
+  { id: 'create', label: 'Create Auction', href: '/auctions/create', icon: 'PlusCircle', match: 'create' },
+  {
+    id: 'live',
+    label: 'Live Auctions',
+    href: '/auctions?status=LIVE',
+    icon: 'Radio',
+    match: 'live',
+  },
+  { id: 'profile', label: 'Profile', href: '/profile', icon: 'User', match: 'profile' },
 ]
 
 export const WELCOME = {

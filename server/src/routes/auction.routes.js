@@ -11,6 +11,7 @@ const { uploadAuctionImages } = require('../middlewares/upload.middleware')
 const router = express.Router()
 
 router.get('/', auctionController.getAllAuctions)
+router.get('/featured', auctionController.getFeaturedAuctions)
 router.get('/my', requireAuth, auctionController.getMyAuctions)
 router.get('/:id', auctionController.getAuctionById)
 

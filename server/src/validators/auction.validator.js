@@ -73,9 +73,14 @@ const createAuctionValidator = [
     .withMessage('Private notes must be at most 500 characters'),
   body('acceptTerms')
     .customSanitizer(parseBoolean)
-    .custom((value) => value === true)
-    .withMessage('You must accept the terms and conditions'),
+    .custom((value, { req }) => {
+      if (parseBoolean(req.body.saveAsDraft)) return true
+      if (value === true) return true
+      throw new Error('You must accept the terms and conditions')
+    }),
+  body('saveAsDraft').optional().customSanitizer(parseBoolean),
   body().custom((_, { req }) => {
+    const asDraft = parseBoolean(req.body.saveAsDraft)
     const startingBid = Number(req.body.startingBid)
     const reservePrice = Number(req.body.reservePrice)
     if (reservePrice < startingBid) {
@@ -88,10 +93,12 @@ const createAuctionValidator = [
       throw new Error('End date must be after the start date')
     }
 
-    const shippingAvailable = parseBoolean(req.body.shippingAvailable)
-    const pickupAvailable = parseBoolean(req.body.pickupAvailable)
-    if (!shippingAvailable && !pickupAvailable) {
-      throw new Error('Enable shipping or pickup for delivery options')
+    if (!asDraft) {
+      const shippingAvailable = parseBoolean(req.body.shippingAvailable)
+      const pickupAvailable = parseBoolean(req.body.pickupAvailable)
+      if (!shippingAvailable && !pickupAvailable) {
+        throw new Error('Enable shipping or pickup for delivery options')
+      }
     }
 
     return true
@@ -163,6 +170,15 @@ const updateAuctionValidator = [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Private notes must be at most 500 characters'),
+  body('publish').optional().customSanitizer(parseBoolean),
+  body('acceptTerms')
+    .optional()
+    .customSanitizer(parseBoolean)
+    .custom((value, { req }) => {
+      if (!parseBoolean(req.body.publish)) return true
+      if (value === true) return true
+      throw new Error('You must accept the terms and conditions to publish')
+    }),
   body().custom((_, { req }) => {
     const startingBid = Number(req.body.startingBid)
     const reservePrice = Number(req.body.reservePrice)

@@ -50,6 +50,12 @@ export const getAuctionsRequest = async ({ page = 1, limit = 100 } = {}) => {
   return data.data
 }
 
+/** Public landing featured ACTIVE auctions (newest, max 8). */
+export const getFeaturedAuctionsRequest = async () => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.FEATURED)
+  return data.data.auctions || []
+}
+
 export const getAuctionByIdRequest = async (id) => {
   const { data } = await api.get(API_ENDPOINTS.AUCTIONS.DETAIL(id))
   return data.data
@@ -67,9 +73,9 @@ export const deleteAuctionRequest = async (id) => {
 
 /**
  * Updates an auction owned by the authenticated user.
- * Maps Create/Edit form fields to the API contract.
+ * Pass publish: true to promote a DRAFT listing to live/upcoming.
  */
-export const updateAuctionRequest = async ({ id, formValues }) => {
+export const updateAuctionRequest = async ({ id, formValues, publish = false }) => {
   const payload = {
     title: formValues.productName.trim(),
     description: formValues.detailedDescription.trim(),
@@ -88,6 +94,8 @@ export const updateAuctionRequest = async ({ id, formValues }) => {
     shippingCost: Number(formValues.shippingCost ?? 0),
     location: formValues.location.trim(),
     privateNotes: formValues.privateNotes?.trim() || '',
+    publish: Boolean(publish),
+    acceptTerms: Boolean(formValues.acceptTerms),
   }
 
   const { data } = await api.patch(API_ENDPOINTS.AUCTIONS.UPDATE(id), payload)

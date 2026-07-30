@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Gavel, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import BrandLogo from '@/components/common/BrandLogo'
 import { useToast } from '@/components/ui/useToast'
 import useAuth from '@/features/auth/hooks/useAuth'
 
@@ -22,19 +23,17 @@ export default function Navbar() {
   return (
     <header className="border-b border-border bg-background">
       <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2" aria-label="BidArena home">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-950 text-white">
-            <Gavel className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span className="font-semibold tracking-tight">BidArena</span>
-        </Link>
+        <BrandLogo imgClassName="h-8 sm:h-9" />
 
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
-              <span className="hidden text-sm text-muted-foreground sm:inline">
-                {user.username}
-              </span>
+              <Link
+                to="/dashboard"
+                className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
+              >
+                {user?.username || 'Dashboard'}
+              </Link>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 Sign out
