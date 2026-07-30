@@ -156,6 +156,19 @@ class BroadcastService {
     getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_TIMER_ENDED, { auctionId })
     console.log(`[Broadcast] Timer ended broadcast to ${roomName}`)
   }
+
+  /**
+   * Broadcast the auction winner to the room
+   * @param {string} auctionId
+   * @param {Object} winnerPayload - { winner, winningBid, auctionId }
+   */
+  broadcastAuctionWinner(auctionId, winnerPayload) {
+    if (!auctionId) return
+    const roomName = this.getRoomName(auctionId)
+    
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_WINNER, winnerPayload)
+    console.log(`[Broadcast] Auction winner broadcast to ${roomName}`)
+  }
 }
 
 // Export singleton instance of BroadcastService

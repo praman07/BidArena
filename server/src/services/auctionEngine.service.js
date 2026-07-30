@@ -99,6 +99,15 @@ class AuctionEngineService {
       }
     }
 
+    // Reject late bids if auction is closed/locked
+    if (state.status !== 'ACTIVE') {
+      return {
+        success: false,
+        code: 'AUCTION_CLOSED',
+        message: `Auction with ID '${auctionId}' is no longer active.`,
+      }
+    }
+
     // Build current state context for validator
     const stateContext = {
       status: state.status,
@@ -166,6 +175,41 @@ class AuctionEngineService {
       updatedState: state,
       broadcastPayload,
     }
+  }
+
+  /**
+   * Closes an auction, locks it from further bids, and determines the winner.
+   * @param {string} auctionId
+   * @returns {Object} The final state of the closed auction
+   */
+  closeAuction(auctionId) {
+    const state = this.getAuctionState(auctionId)
+    if (!state || state.status === 'CLOSED') {
+      return null
+    }
+
+    // Lock the auction
+    state.status = 'CLOSED'
+    console.log(`[AuctionEngine] Auction ${auctionId} locked and closed.`)
+
+    const broadcastService = require('./broadcast.service')
+
+    // Broadcast final state
+    broadcastService.broadcastAuctionState(auctionId, state)
+
+    // Determine and broadcast winner
+    if (state.highestBidder) {
+      const winnerPayload = {
+        auctionId: state.auctionId,
+        winner: state.highestBidder,
+        winningBid: state.currentHighestBid,
+      }
+      broadcastService.broadcastAuctionWinner(auctionId, winnerPayload)
+    } else {
+      console.log(`[AuctionEngine] Auction ${auctionId} closed with no winner.`)
+    }
+
+    return state
   }
 }
 
