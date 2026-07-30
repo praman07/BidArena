@@ -1,4 +1,4 @@
-const { validateBid } = require('../validators/bid.validator')
+const { validateBid } = require('./BidValidator')
 const Auction = require('../models/Auction')
 const Bid = require('../models/Bid')
 const Timeline = require('../models/Timeline')
@@ -240,7 +240,7 @@ class AuctionEngineService {
     state.status = 'CLOSED'
     console.log(`[AuctionEngine] Auction ${auctionId} locked and closed.`)
 
-    const broadcastService = require('./broadcast.service')
+    const broadcastService = require('./BroadcastManager')
 
     // Broadcast final state
     broadcastService.broadcastAuctionState(auctionId, state)

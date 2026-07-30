@@ -1,5 +1,5 @@
-const SOCKET_EVENTS = require('../../constants/socket.events')
-const { validateBid } = require('../../validators/bid.validator')
+const SOCKET_EVENTS = require('../constants/socket.events')
+const { validateBid } = require('../auction-engine/BidValidator')
 
 /**
  * Registers bid validation socket event listeners.

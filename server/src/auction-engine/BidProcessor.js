@@ -1,6 +1,6 @@
-const { validateBid } = require('../validators/bid.validator')
-const auctionRoomStore = require('./auctionRoomStore.service')
-const broadcastService = require('./broadcast.service')
+const { validateBid } = require('./BidValidator')
+const auctionRoomStore = require('./RecoveryManager')
+const broadcastService = require('./BroadcastManager')
 
 /**
  * Bid Pipeline Service
