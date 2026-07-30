@@ -29,17 +29,20 @@ export default function AppRoutes() {
           <Route path="/register" element={<Register />} />
         </Route>
 
-        <Route element={<MainLayout />}>
-          <Route element={<ProtectedRoute />}>
+        {/* Authenticated shell — sidebar + header foundation */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/my-auctions" element={<MyAuctions />} />
             <Route path="/auctions/create" element={<CreateAuction />} />
             <Route path="/auctions/:id/edit" element={<EditAuction />} />
-            <Route path="/my-auctions" element={<MyAuctions />} />
-            <Route path="/auction-room/:id" element={<AuctionRoom />} />
+          </Route>
+        </Route>
 
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-            </Route>
+        <Route element={<MainLayout />}>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/auction-room/:id" element={<AuctionRoom />} />
           </Route>
         </Route>
 
