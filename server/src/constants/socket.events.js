@@ -23,6 +23,12 @@ const SOCKET_EVENTS = {
   AUCTION_USER_LEFT: 'auction:user_left',
   AUCTION_ROOM_STATS: 'auction:room_stats',
 
+  // Auction Engine & Bid Socket Events
+  BID_PLACE: 'bid:place',
+  BID_ACCEPTED: 'bid:accepted',
+  BID_ERROR: 'bid:error',
+  AUCTION_STATE_UPDATE: 'auction:state_update',
+
   // Error Event
   ERROR: 'error',
 }
