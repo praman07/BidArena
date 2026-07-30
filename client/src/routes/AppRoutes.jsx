@@ -22,6 +22,7 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auctions" element={<BrowseAuctions />} />
+        <Route path="/auctions/:id" element={<AuctionDetails />} />
 
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<Login />} />
@@ -40,8 +41,6 @@ export default function AppRoutes() {
               <Route path="/dashboard" element={<Dashboard />} />
             </Route>
           </Route>
-
-          <Route path="/auctions/:id" element={<AuctionDetails />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
