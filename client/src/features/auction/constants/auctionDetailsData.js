@@ -61,13 +61,20 @@ export function mapAuctionDetailsFromApi(auction) {
 
   const bids = Array.isArray(auction.bids) ? auction.bids : []
 
+  const status =
+    auction.status === 'ENDED' ||
+    auction.status === 'CANCELLED' ||
+    auction.status === 'DRAFT'
+      ? auction.status
+      : resolveDisplayStatus(auction.startTime, auction.endTime, now)
+
   return {
     id: auction.id,
     title: auction.title,
     shortTitle: auction.title.split('—')[0].trim(),
     category: auction.category,
     condition: auction.condition,
-    status: resolveDisplayStatus(auction.startTime, auction.endTime, now),
+    status,
     apiStatus: auction.status,
     currentBid: auction.currentBid ?? auction.startingBid ?? 0,
     estimatedValue: auction.reservePrice ?? auction.startingBid ?? 0,
@@ -77,6 +84,13 @@ export function mapAuctionDetailsFromApi(auction) {
     endsInSeconds: Math.max(0, Math.floor((end - now) / 1000)),
     participants: participantCount,
     highestBidder: auction.highestBidder || null,
+    winner: auction.winner || null,
+    paymentStatus: auction.paymentStatus || 'PENDING',
+    paymentId: auction.paymentId || '',
+    orderId: auction.orderId || '',
+    paidAt: auction.paidAt || null,
+    paymentMethod: auction.paymentMethod || '',
+    transactionAmount: auction.transactionAmount || 0,
     views: Math.max(participantCount * 12, participantCount),
     image: images[0] || '',
     imageAlt: auction.title,

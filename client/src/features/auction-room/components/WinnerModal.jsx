@@ -2,7 +2,16 @@ import { Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/features/auction/constants/auctionDetailsData'
 
-export default function WinnerModal({ open, winner, winningAmount = 0, message, onClose }) {
+export default function WinnerModal({
+  open,
+  winner,
+  winningAmount = 0,
+  message,
+  onClose,
+  canPay = false,
+  onPayNow,
+  paying = false,
+}) {
   if (!open) return null
 
   return (
@@ -39,7 +48,22 @@ export default function WinnerModal({ open, winner, winningAmount = 0, message, 
             {message || 'This auction ended with no winning bids.'}
           </p>
         )}
-        <Button type="button" className="mt-6 w-full rounded-xl" onClick={onClose}>
+        {canPay ? (
+          <Button
+            type="button"
+            className="mt-6 w-full rounded-xl"
+            disabled={paying}
+            onClick={onPayNow}
+          >
+            {paying ? 'Processing…' : 'Pay Now'}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant={canPay ? 'outline' : 'default'}
+          className="mt-3 w-full rounded-xl"
+          onClick={onClose}
+        >
           Close
         </Button>
       </div>

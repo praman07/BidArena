@@ -18,6 +18,20 @@ function statusBadge(status) {
   return <Badge variant="outline">UPCOMING</Badge>
 }
 
+function paymentBadge(paymentStatus) {
+  if (paymentStatus === 'PAID') {
+    return (
+      <Badge className="border border-emerald-100 bg-emerald-50 text-emerald-700">Paid</Badge>
+    )
+  }
+  if (paymentStatus === 'FAILED') {
+    return <Badge className="border border-red-100 bg-red-50 text-red-600">Failed</Badge>
+  }
+  return (
+    <Badge className="border border-amber-100 bg-amber-50 text-amber-700">Pending</Badge>
+  )
+}
+
 function formatEndDate(value) {
   if (!value) return '—'
   const date = new Date(value)
@@ -70,6 +84,7 @@ export default function RecentAuctionsTable({ auctions = [] }) {
                 <th className="px-4 py-3 font-medium text-muted-foreground">Auction</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Current Bid</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Payment</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">End Date</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Action</th>
               </tr>
@@ -95,6 +110,13 @@ export default function RecentAuctionsTable({ auctions = [] }) {
                   </td>
                   <td className="px-4 py-3.5">
                     {statusBadge(auction.displayStatus || auction.status)}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    {(auction.displayStatus || auction.status) === 'ENDED'
+                      ? paymentBadge(auction.paymentStatus || 'PENDING')
+                      : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                   </td>
                   <td className="px-4 py-3.5 text-muted-foreground">
                     {formatEndDate(auction.endTime || auction.endDate)}
