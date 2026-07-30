@@ -3,6 +3,10 @@ export const API_BASE_URL =
 
 export const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '')
 
+/** Prefer explicit socket URL; fall back to HTTP server origin. */
+export const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL || SERVER_BASE_URL
+
 export const AUTH_STORAGE_KEY = 'bidarena.auth.user'
 
 export const APP_CONSTANTS = {

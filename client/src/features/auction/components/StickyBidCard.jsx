@@ -5,8 +5,12 @@ import { cn } from '@/lib/utils'
 import { formatCurrency } from '../constants/auctionDetailsData'
 import CountdownTimer from './CountdownTimer'
 
-export default function StickyBidCard({ auction, visible }) {
-  const isLive = auction.status === 'LIVE'
+export default function StickyBidCard({ auction, visible, remainingSeconds, serverControlled = false }) {
+  const isLive = auction.status === 'LIVE' || auction.status === 'ACTIVE'
+  const timerSeconds =
+    remainingSeconds !== undefined && remainingSeconds !== null
+      ? remainingSeconds
+      : auction.endsInSeconds
 
   return (
     <AnimatePresence>
@@ -35,7 +39,9 @@ export default function StickyBidCard({ auction, visible }) {
                   <span className="inline-flex items-center gap-1.5">
                     Ends in
                     <CountdownTimer
-                      initialSeconds={auction.endsInSeconds}
+                      initialSeconds={timerSeconds}
+                      remainingSeconds={timerSeconds}
+                      controlled={serverControlled}
                       compact
                       className="text-foreground"
                     />

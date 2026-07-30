@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Bell, ChevronRight, LogOut, Menu, Search, Settings, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 import useAuth from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/components/ui/useToast'
-import { DASHBOARD_USER, NOTIFICATIONS } from '../constants/dashboardData'
+import { DASHBOARD_USER } from '../constants/dashboardData'
+
+const FALLBACK_AVATAR =
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
 
 export default function DashboardHeader({ onOpenSidebar, breadcrumbs = [] }) {
   const { user, logout } = useAuth()
@@ -17,8 +19,9 @@ export default function DashboardHeader({ onOpenSidebar, breadcrumbs = [] }) {
   const notifRef = useRef(null)
   const profileRef = useRef(null)
 
-  const unread = NOTIFICATIONS.filter((n) => n.unread).length
   const displayName = user?.username || DASHBOARD_USER.name
+  const avatar = user?.avatar || FALLBACK_AVATAR
+  const unread = 0
 
   useEffect(() => {
     const onPointerDown = (event) => {
@@ -124,19 +127,9 @@ export default function DashboardHeader({ onOpenSidebar, breadcrumbs = [] }) {
                   <span className="text-xs text-muted-foreground">{unread} unread</span>
                 </div>
                 <ul className="max-h-80 overflow-y-auto">
-                  {NOTIFICATIONS.slice(0, 4).map((item) => (
-                    <li
-                      key={item.id}
-                      className={cn(
-                        'border-b border-border/50 px-4 py-3 last:border-0',
-                        item.unread && 'bg-neutral-50/80'
-                      )}
-                    >
-                      <p className="text-sm font-medium tracking-tight">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{item.body}</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{item.time}</p>
-                    </li>
-                  ))}
+                  <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    No notifications yet.
+                  </li>
                 </ul>
               </div>
             )}
@@ -154,9 +147,10 @@ export default function DashboardHeader({ onOpenSidebar, breadcrumbs = [] }) {
               }}
             >
               <img
-                src={DASHBOARD_USER.avatar}
+                src={avatar}
                 alt=""
                 className="h-8 w-8 rounded-full object-cover ring-1 ring-border/70"
+                loading="lazy"
               />
               <span className="hidden text-sm font-medium tracking-tight xl:inline">
                 {displayName}
@@ -173,14 +167,14 @@ export default function DashboardHeader({ onOpenSidebar, breadcrumbs = [] }) {
                   <User className="h-4 w-4" aria-hidden="true" />
                   Profile
                 </Link>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-neutral-50 hover:text-foreground"
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-neutral-50 hover:text-foreground"
                   onClick={() => setProfileOpen(false)}
                 >
                   <Settings className="h-4 w-4" aria-hidden="true" />
-                  Settings
-                </button>
+                  Account
+                </Link>
                 <div className="my-1 border-t border-border/70" />
                 <button
                   type="button"

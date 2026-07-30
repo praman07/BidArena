@@ -9,6 +9,12 @@ const env = {
   PORT: Number(process.env.PORT) || 5000,
   NODE_ENV: process.env.NODE_ENV || 'development',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+  CLIENT_URLS: process.env.CLIENT_URLS
+    ? String(process.env.CLIENT_URLS)
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    : [],
 
   MONGO_URI: process.env.MONGO_URI,
 

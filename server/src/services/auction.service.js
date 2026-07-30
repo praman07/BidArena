@@ -117,10 +117,9 @@ const getAuctionById = async (id) => {
     throw ApiError.notFound('Auction not found')
   }
 
-  const auction = await Auction.findById(id).populate(
-    'seller',
-    'username email avatar createdAt'
-  )
+  const auction = await Auction.findById(id)
+    .populate('seller', 'username email avatar createdAt')
+    .populate('highestBidder', 'username avatar')
 
   if (!auction) {
     throw ApiError.notFound('Auction not found')
@@ -152,8 +151,133 @@ const getAuctionById = async (id) => {
   }
 }
 
+const resolveDisplayStatus = (auction) => {
+  const now = Date.now()
+  const start = new Date(auction.startTime).getTime()
+  const end = new Date(auction.endTime).getTime()
+  if (auction.status === 'ENDED' || now >= end) return 'ENDED'
+  if (auction.status === 'DRAFT') return 'DRAFT'
+  if (now < start) return 'UPCOMING'
+  return 'ACTIVE'
+}
+
+const assertOwner = (auction, userId) => {
+  const sellerId = auction.seller?._id?.toString?.() || auction.seller?.toString?.()
+  if (!sellerId || sellerId !== userId.toString()) {
+    throw ApiError.forbidden('You can only manage your own auctions')
+  }
+}
+
+const getMyAuctions = async (userId) => {
+  const auctions = await Auction.find({ seller: userId }).sort({ createdAt: -1 })
+
+  const results = await Promise.all(
+    auctions.map(async (auction) => {
+      const totalBids = await Bid.countDocuments({
+        $or: [{ auctionId: auction.auctionId }, { auctionId: auction._id.toString() }],
+      })
+      return {
+        ...auction.toPublicJSON(),
+        totalBids,
+        displayStatus: resolveDisplayStatus(auction),
+      }
+    })
+  )
+
+  return results
+}
+
+const deleteAuction = async ({ auctionId, userId }) => {
+  if (!mongoose.Types.ObjectId.isValid(auctionId)) {
+    throw ApiError.notFound('Auction not found')
+  }
+
+  const auction = await Auction.findById(auctionId)
+  if (!auction) {
+    throw ApiError.notFound('Auction not found')
+  }
+
+  assertOwner(auction, userId)
+  await auction.deleteOne()
+  return { id: auctionId }
+}
+
+const updateAuction = async ({ auctionId, userId, payload }) => {
+  if (!mongoose.Types.ObjectId.isValid(auctionId)) {
+    throw ApiError.notFound('Auction not found')
+  }
+
+  const auction = await Auction.findById(auctionId)
+  if (!auction) {
+    throw ApiError.notFound('Auction not found')
+  }
+
+  assertOwner(auction, userId)
+
+  const startingBid = Number(payload.startingBid ?? auction.startingBid)
+  const reservePrice = Number(payload.reservePrice ?? auction.reservePrice)
+  const bidIncrement = Number(payload.bidIncrement ?? auction.bidIncrement)
+  const startTime = payload.startTime ? new Date(payload.startTime) : auction.startTime
+  const endTime = payload.endTime ? new Date(payload.endTime) : auction.endTime
+
+  if (!(reservePrice >= startingBid)) {
+    throw ApiError.badRequest('Reserve price must be at least the starting bid')
+  }
+  if (!(endTime > startTime)) {
+    throw ApiError.badRequest('End date must be after the start date')
+  }
+
+  auction.title = payload.title?.trim() || auction.title
+  auction.description = payload.description?.trim() || auction.description
+  auction.shortDescription =
+    payload.shortDescription !== undefined
+      ? payload.shortDescription.trim()
+      : auction.shortDescription
+  auction.category = payload.category?.trim() || auction.category
+  auction.brand = payload.brand !== undefined ? payload.brand.trim() : auction.brand
+  auction.condition = payload.condition?.trim() || auction.condition
+  auction.startingBid = startingBid
+  auction.reservePrice = reservePrice
+  auction.bidIncrement = bidIncrement
+  auction.startTime = startTime
+  auction.endTime = endTime
+  auction.timezone = payload.timezone || auction.timezone
+  auction.location = payload.location?.trim() || auction.location
+  auction.privateNotes =
+    payload.privateNotes !== undefined ? payload.privateNotes.trim() : auction.privateNotes
+  auction.shippingAvailable =
+    payload.shippingAvailable !== undefined
+      ? parseBoolean(payload.shippingAvailable)
+      : auction.shippingAvailable
+  auction.pickupAvailable =
+    payload.pickupAvailable !== undefined
+      ? parseBoolean(payload.pickupAvailable)
+      : auction.pickupAvailable
+  auction.shippingCost =
+    payload.shippingCost !== undefined ? Number(payload.shippingCost) || 0 : auction.shippingCost
+
+  // Keep engine mirrors in sync
+  auction.startingPrice = startingBid
+  auction.minIncrement = bidIncrement
+  if (!auction.currentBid || auction.currentBid < startingBid) {
+    auction.currentBid = startingBid
+    auction.currentHighestBid = startingBid
+  }
+
+  if (auction.status !== 'DRAFT') {
+    auction.status = resolveStatus(startTime, endTime, { asDraft: false })
+  }
+
+  await auction.save()
+  await auction.populate('seller', 'username email avatar createdAt')
+  return auction
+}
+
 module.exports = {
   createAuction,
   getAllAuctions,
   getAuctionById,
+  getMyAuctions,
+  deleteAuction,
+  updateAuction,
 }

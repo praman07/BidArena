@@ -1,10 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChevronRight, RefreshCw } from 'lucide-react'
 import Navbar from '@/features/public/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import useAuth from '@/features/auth/hooks/useAuth'
+import useAuctionSocket from '@/hooks/useAuctionSocket'
 import ProductGallery from '../components/ProductGallery'
 import AuctionSummary from '../components/AuctionSummary'
 import BidHistory from '../components/BidHistory'
@@ -13,6 +15,7 @@ import Specifications from '../components/Specifications'
 import RelatedAuctions from '../components/RelatedAuctions'
 import StickyBidCard from '../components/StickyBidCard'
 import DetailsLoadingSkeleton from '../components/DetailsLoadingSkeleton'
+import WinnerModal from '@/features/auction-room/components/WinnerModal'
 import { getAuctionByIdRequest } from '../services/auctionService'
 import {
   DETAIL_TABS,
@@ -24,6 +27,7 @@ const Footer = lazy(() => import('@/features/public/components/Footer'))
 
 export default function AuctionDetails() {
   const { id } = useParams()
+  const { user } = useAuth()
   const [auction, setAuction] = useState(null)
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +35,10 @@ export default function AuctionDetails() {
   const [activeTab, setActiveTab] = useState('description')
   const [wishlisted, setWishlisted] = useState(false)
   const [showSticky, setShowSticky] = useState(false)
+
+  const { live, dismissWinner } = useAuctionSocket(id, {
+    enabled: Boolean(user && id),
+  })
 
   const loadAuction = useCallback(async () => {
     if (!id) return
@@ -63,11 +71,33 @@ export default function AuctionDetails() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const liveAuction = useMemo(() => {
+    if (!auction) return null
+    if (!live.joined) return auction
+
+    const status =
+      live.ended || live.status === 'ENDED'
+        ? 'ENDED'
+        : live.remainingSeconds > 0
+          ? 'LIVE'
+          : auction.status
+
+    return {
+      ...auction,
+      status,
+      currentBid: live.currentBid || auction.currentBid,
+      participants: live.participants || auction.participants,
+      endsInSeconds: live.remainingSeconds,
+      highestBidder: live.highestBidder || auction.highestBidder,
+      bidHistory: live.bids?.length ? live.bids : auction.bidHistory,
+    }
+  }, [auction, live])
+
   const handleShare = async () => {
     const url = window.location.href
     try {
       if (navigator.share) {
-        await navigator.share({ title: auction?.title, url })
+        await navigator.share({ title: liveAuction?.title, url })
         return
       }
       await navigator.clipboard.writeText(url)
@@ -115,7 +145,7 @@ export default function AuctionDetails() {
     )
   }
 
-  if (!auction) {
+  if (!liveAuction) {
     return shell(
       <main className="mx-auto max-w-6xl px-4 pb-20 pt-32 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight">Auction not found</h1>
@@ -155,7 +185,7 @@ export default function AuctionDetails() {
                 <li aria-hidden="true">
                   <ChevronRight className="h-3.5 w-3.5" />
                 </li>
-                <li className="font-medium text-foreground">{auction.shortTitle}</li>
+                <li className="font-medium text-foreground">{liveAuction.shortTitle}</li>
               </ol>
             </nav>
           </div>
@@ -169,12 +199,14 @@ export default function AuctionDetails() {
             className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start"
             aria-label="Auction overview"
           >
-            <ProductGallery images={auction.gallery} title={auction.title} />
+            <ProductGallery images={liveAuction.gallery} title={liveAuction.title} />
             <AuctionSummary
-              auction={auction}
+              auction={liveAuction}
               wishlisted={wishlisted}
               onToggleWishlist={() => setWishlisted((prev) => !prev)}
               onShare={handleShare}
+              remainingSeconds={liveAuction.endsInSeconds}
+              serverControlled={live.joined}
             />
           </motion.section>
 
@@ -213,7 +245,7 @@ export default function AuctionDetails() {
                   transition={{ duration: 0.3 }}
                   className="max-w-3xl space-y-4 text-[15px] leading-7 text-muted-foreground"
                 >
-                  {(auction.description || 'No description provided.')
+                  {(liveAuction.description || 'No description provided.')
                     .split('\n\n')
                     .map((paragraph) => (
                       <p key={paragraph.slice(0, 48)}>{paragraph}</p>
@@ -228,7 +260,7 @@ export default function AuctionDetails() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <Specifications specifications={auction.specifications} />
+                  <Specifications specifications={liveAuction.specifications} />
                 </motion.div>
               )}
 
@@ -239,7 +271,7 @@ export default function AuctionDetails() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <BidHistory bids={auction.bidHistory} />
+                  <BidHistory bids={liveAuction.bidHistory} />
                 </motion.div>
               )}
 
@@ -250,7 +282,7 @@ export default function AuctionDetails() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <SellerCard seller={auction.seller} />
+                  <SellerCard seller={liveAuction.seller} />
                 </motion.div>
               )}
             </div>
@@ -260,7 +292,20 @@ export default function AuctionDetails() {
         </div>
       </main>
 
-      <StickyBidCard auction={auction} visible={showSticky} />
+      <StickyBidCard
+        auction={liveAuction}
+        visible={showSticky}
+        remainingSeconds={liveAuction.endsInSeconds}
+        serverControlled={live.joined}
+      />
+
+      <WinnerModal
+        open={Boolean(live.winner)}
+        winner={live.winner?.winner}
+        winningAmount={live.winner?.winningAmount}
+        message={live.winner?.message}
+        onClose={dismissWinner}
+      />
     </>
   )
 }

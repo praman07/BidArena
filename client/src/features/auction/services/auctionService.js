@@ -54,3 +54,42 @@ export const getAuctionByIdRequest = async (id) => {
   const { data } = await api.get(API_ENDPOINTS.AUCTIONS.DETAIL(id))
   return data.data
 }
+
+export const getMyAuctionsRequest = async () => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.MY)
+  return data.data.auctions
+}
+
+export const deleteAuctionRequest = async (id) => {
+  const { data } = await api.delete(API_ENDPOINTS.AUCTIONS.DELETE(id))
+  return data.data
+}
+
+/**
+ * Updates an auction owned by the authenticated user.
+ * Maps Create/Edit form fields to the API contract.
+ */
+export const updateAuctionRequest = async ({ id, formValues }) => {
+  const payload = {
+    title: formValues.productName.trim(),
+    description: formValues.detailedDescription.trim(),
+    shortDescription: formValues.shortDescription?.trim() || '',
+    category: formValues.category,
+    brand: formValues.brand?.trim() || '',
+    condition: formValues.condition,
+    startingBid: Number(formValues.startingPrice),
+    reservePrice: Number(formValues.reservePrice),
+    bidIncrement: Number(formValues.bidIncrement),
+    startTime: new Date(formValues.startDate).toISOString(),
+    endTime: new Date(formValues.endDate).toISOString(),
+    timezone: formValues.timezone || 'UTC',
+    shippingAvailable: Boolean(formValues.shippingAvailable),
+    pickupAvailable: Boolean(formValues.pickupAvailable),
+    shippingCost: Number(formValues.shippingCost ?? 0),
+    location: formValues.location.trim(),
+    privateNotes: formValues.privateNotes?.trim() || '',
+  }
+
+  const { data } = await api.patch(API_ENDPOINTS.AUCTIONS.UPDATE(id), payload)
+  return data.data.auction
+}

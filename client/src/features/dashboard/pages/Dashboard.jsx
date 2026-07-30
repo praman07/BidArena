@@ -10,7 +10,6 @@ import LiveAuctionGrid from '../components/LiveAuctionGrid'
 import ActivityTimeline from '../components/ActivityTimeline'
 import RightSidebarWidgets from '../components/RightSidebarWidgets'
 import LoadingSkeleton from '../components/LoadingSkeleton'
-import { DASHBOARD_USER } from '../constants/dashboardData'
 import {
   getDashboardRecentActivityRequest,
   getDashboardRecentAuctionsRequest,
@@ -94,7 +93,7 @@ export default function Dashboard() {
 
   const name = user?.username
     ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
-    : DASHBOARD_USER.name
+    : 'Collector'
 
   const loadDashboard = async () => {
     setLoading(true)
@@ -178,6 +177,8 @@ export default function Dashboard() {
         </div>
         <RightSidebarWidgets
           upcomingAuctions={recentAuctions.filter((a) => a.displayStatus === 'UPCOMING').slice(0, 3)}
+          activity={activity}
+          liveCount={liveAuctions.length}
         />
       </div>
     </div>

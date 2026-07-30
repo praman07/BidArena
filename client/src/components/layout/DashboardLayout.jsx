@@ -17,6 +17,13 @@ function buildBreadcrumbs(pathname) {
   if (pathname.startsWith('/auctions/create')) {
     return [{ label: 'Home', href: '/dashboard' }, { label: 'Create Auction' }]
   }
+  if (pathname.startsWith('/edit-auction') || pathname.includes('/edit')) {
+    return [
+      { label: 'Home', href: '/dashboard' },
+      { label: 'My Auctions', href: '/my-auctions' },
+      { label: 'Edit Auction' },
+    ]
+  }
   return [{ label: 'Home', href: '/dashboard' }, { label: 'App' }]
 }
 

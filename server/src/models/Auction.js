@@ -186,6 +186,16 @@ auctionSchema.methods.toPublicJSON = function toPublicJSON() {
     seller: sellerPayload,
     participants: this.participants,
     participantCount: Array.isArray(this.participants) ? this.participants.length : 0,
+    highestBidder: this.highestBidder
+      ? typeof this.highestBidder === 'object' && this.highestBidder.username
+        ? {
+            id: this.highestBidder._id?.toString?.() || this.highestBidder.id,
+            username: this.highestBidder.username,
+            avatar: this.highestBidder.avatar,
+          }
+        : this.highestBidder
+      : null,
+    totalBidsCount: this.totalBidsCount || 0,
     status: this.status,
     startTime: this.startTime,
     endTime: this.endTime,

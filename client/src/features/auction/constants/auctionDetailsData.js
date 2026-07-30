@@ -76,6 +76,7 @@ export function mapAuctionDetailsFromApi(auction) {
     bidIncrement: auction.bidIncrement ?? 1,
     endsInSeconds: Math.max(0, Math.floor((end - now) / 1000)),
     participants: participantCount,
+    highestBidder: auction.highestBidder || null,
     views: Math.max(participantCount * 12, participantCount),
     image: images[0] || '',
     imageAlt: auction.title,
@@ -104,13 +105,13 @@ export function mapAuctionDetailsFromApi(auction) {
     seller: {
       name: seller?.username || 'Seller',
       avatar: seller?.avatar || DEFAULT_AVATAR,
-      verified: true,
-      rating: 4.9,
+      verified: Boolean(seller?.username),
+      rating: null,
       reviewCount: 0,
       completedAuctions: 0,
       yearsOnPlatform: yearsOnPlatform(seller?.createdAt),
       location: auction.location || '',
-      responseTime: 'Usually responds within 1 hour',
+      responseTime: '',
     },
   }
 }

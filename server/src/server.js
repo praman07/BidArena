@@ -2,7 +2,7 @@ const http = require('http')
 const app = require('./app')
 const connectDB = require('./config/db')
 const env = require('./config/env')
-const { initSocket } = require('./sockets/index')
+const { initSocketServer } = require('./socket/socketServer')
 
 const startServer = async () => {
   try {
@@ -12,8 +12,8 @@ const startServer = async () => {
     // 2. Create HTTP Server
     const server = http.createServer(app)
 
-    // 3. Initialize Socket.IO
-    initSocket(server)
+    // 3. Initialize Socket.IO (live auctions)
+    initSocketServer(server)
 
     // 4. Start Server
     server.listen(env.PORT, () => {

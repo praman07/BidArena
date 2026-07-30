@@ -18,6 +18,9 @@ import useAuth from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/components/ui/useToast'
 import { DASHBOARD_USER, SIDEBAR_NAV } from '../constants/dashboardData'
 
+const FALLBACK_AVATAR =
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
+
 const ICONS = {
   LayoutDashboard,
   Compass,
@@ -37,6 +40,7 @@ export default function AppSidebar({ collapsed, onToggle, mobileOpen, onCloseMob
 
   const displayName = user?.username || DASHBOARD_USER.name
   const email = user?.email || DASHBOARD_USER.email
+  const avatar = user?.avatar || FALLBACK_AVATAR
 
   const handleLogout = async () => {
     try {
@@ -126,7 +130,7 @@ export default function AppSidebar({ collapsed, onToggle, mobileOpen, onCloseMob
           {!collapsed && (
             <div className="mb-3 flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-2.5">
               <img
-                src={DASHBOARD_USER.avatar}
+                src={avatar}
                 alt=""
                 className="h-9 w-9 rounded-full object-cover ring-1 ring-border/70"
               />
