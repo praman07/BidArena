@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
-import { CheckCircle2, Cloud, FilePenLine } from 'lucide-react'
+import { FilePenLine } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/useToast'
 import ImageUploader from '../components/ImageUploader'
@@ -15,6 +15,7 @@ import AuctionPreviewCard from '../components/AuctionPreviewCard'
 import { createAuctionRequest } from '../services/auctionService'
 import {
   createAuctionDefaults,
+  createAuctionDraftSchema,
   createAuctionSchema,
 } from '../validation/createAuctionSchema'
 
@@ -23,15 +24,17 @@ export default function CreateAuction() {
   const navigate = useNavigate()
   const [images, setImages] = useState([])
   const [imageError, setImageError] = useState('')
-  const [autoSaveState, setAutoSaveState] = useState('idle')
   const [draftStatus, setDraftStatus] = useState('Draft')
   const [isDraftSaving, setIsDraftSaving] = useState(false)
 
   const {
     register,
     handleSubmit,
+    getValues,
+    setError,
+    clearErrors,
     watch,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(createAuctionSchema),
     defaultValues: createAuctionDefaults(),
@@ -40,29 +43,17 @@ export default function CreateAuction() {
 
   const values = watch()
 
-  useEffect(() => {
-    if (!isDirty && images.length === 0) return undefined
-
-    setAutoSaveState('saving')
-    const timer = setTimeout(() => {
-      setAutoSaveState('saved')
-      setDraftStatus('Draft · Auto-saved')
-    }, 1200)
-
-    return () => clearTimeout(timer)
-  }, [values, images, isDirty])
-
   const submitAuction = async (data, { saveAsDraft = false } = {}) => {
     if (images.length === 0) {
       setImageError('Upload at least one product image')
-      toast.error('Add at least one product image before publishing')
+      toast.error('Add at least one product image before saving')
       return
     }
 
     const imageFiles = images.map((image) => image.file).filter(Boolean)
     if (imageFiles.length === 0) {
       setImageError('Upload at least one product image')
-      toast.error('Add at least one product image before publishing')
+      toast.error('Add at least one product image before saving')
       return
     }
 
@@ -77,8 +68,8 @@ export default function CreateAuction() {
 
       if (saveAsDraft) {
         setDraftStatus('Draft · Saved')
-        setAutoSaveState('saved')
         toast.success('Draft saved successfully')
+        navigate('/my-auctions')
         return
       }
 
@@ -94,15 +85,29 @@ export default function CreateAuction() {
     await submitAuction(data, { saveAsDraft: false })
   })
 
-  const onSaveDraft = handleSubmit(async (data) => {
+  const onSaveDraft = async () => {
+    clearErrors()
+    const raw = getValues()
+    const parsed = createAuctionDraftSchema.safeParse(raw)
+
+    if (!parsed.success) {
+      parsed.error.issues.forEach((issue) => {
+        const field = issue.path?.[0]
+        if (field) {
+          setError(field, { type: 'manual', message: issue.message })
+        }
+      })
+      toast.error(parsed.error.issues[0]?.message || 'Complete the required fields to save a draft')
+      return
+    }
+
     setIsDraftSaving(true)
-    setAutoSaveState('saving')
     try {
-      await submitAuction(data, { saveAsDraft: true })
+      await submitAuction(parsed.data, { saveAsDraft: true })
     } finally {
       setIsDraftSaving(false)
     }
-  })
+  }
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -121,28 +126,10 @@ export default function CreateAuction() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1.5 rounded-full">
-            <FilePenLine className="h-3.5 w-3.5" aria-hidden="true" />
-            {draftStatus}
-          </Badge>
-          <Badge
-            variant="secondary"
-            className="gap-1.5 rounded-full"
-            aria-live="polite"
-          >
-            {autoSaveState === 'saved' ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-            ) : (
-              <Cloud className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            {autoSaveState === 'saving'
-              ? 'Saving…'
-              : autoSaveState === 'saved'
-                ? 'Auto-saved'
-                : 'Autosave on'}
-          </Badge>
-        </div>
+        <Badge variant="outline" className="gap-1.5 rounded-full self-start sm:self-auto">
+          <FilePenLine className="h-3.5 w-3.5" aria-hidden="true" />
+          {draftStatus}
+        </Badge>
       </motion.div>
 
       <form

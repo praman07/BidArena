@@ -20,15 +20,18 @@ export const DASHBOARD_USER = {
 }
 
 export const SIDEBAR_NAV = [
-  { label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard' },
-  { label: 'Browse Auctions', href: '/auctions', icon: 'Compass' },
-  { label: 'My Auctions', href: '/my-auctions', icon: 'Gavel' },
-  { label: 'Create Auction', href: '/auctions/create', icon: 'PlusCircle' },
-  { label: 'Live Auctions', href: '/auctions?status=LIVE', icon: 'Radio' },
-  { label: 'Watchlist', href: '/dashboard#watchlist', icon: 'Heart' },
-  { label: 'Notifications', href: '/dashboard#notifications', icon: 'Bell' },
-  { label: 'Profile', href: '/profile', icon: 'User' },
-  { label: 'Settings', href: '/dashboard#settings', icon: 'Settings' },
+  { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard', match: 'dashboard' },
+  { id: 'browse', label: 'Browse Auctions', href: '/auctions', icon: 'Compass', match: 'browse' },
+  { id: 'my-auctions', label: 'My Auctions', href: '/my-auctions', icon: 'Gavel', match: 'my-auctions' },
+  { id: 'create', label: 'Create Auction', href: '/auctions/create', icon: 'PlusCircle', match: 'create' },
+  {
+    id: 'live',
+    label: 'Live Auctions',
+    href: '/auctions?status=LIVE',
+    icon: 'Radio',
+    match: 'live',
+  },
+  { id: 'profile', label: 'Profile', href: '/profile', icon: 'User', match: 'profile' },
 ]
 
 export const WELCOME = {
@@ -94,9 +97,9 @@ export const QUICK_ACTIONS = [
   },
   {
     id: 'live',
-    title: 'Join Live Auction',
-    description: 'Enter a live room and bid in real time.',
-    href: '/auction-room/rolex-daytona',
+    title: 'Browse Live Auctions',
+    description: 'Find live lots and enter a room to bid in real time.',
+    href: '/auctions',
     icon: 'Zap',
     accent: 'live',
   },

@@ -1,22 +1,23 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Bell,
   ChevronLeft,
   ChevronRight,
   Compass,
   Gavel,
-  Heart,
   LayoutDashboard,
   LogOut,
   PlusCircle,
   Radio,
-  Settings,
   User,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import BrandLogo from '@/components/common/BrandLogo'
 import useAuth from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/components/ui/useToast'
 import { DASHBOARD_USER, SIDEBAR_NAV } from '../constants/dashboardData'
+
+const FALLBACK_AVATAR =
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
 
 const ICONS = {
   LayoutDashboard,
@@ -24,19 +25,46 @@ const ICONS = {
   Gavel,
   PlusCircle,
   Radio,
-  Heart,
-  Bell,
   User,
-  Settings,
+}
+
+function isNavItemActive(item, pathname, search) {
+  const path = pathname || '/'
+  const params = new URLSearchParams(search || '')
+
+  switch (item.match || item.id) {
+    case 'dashboard':
+      return path === '/dashboard'
+    case 'browse':
+      return (
+        (path === '/auctions' || path === '/browse-auctions') &&
+        params.get('status') !== 'LIVE'
+      )
+    case 'live':
+      return (
+        (path === '/auctions' || path === '/browse-auctions') &&
+        params.get('status') === 'LIVE'
+      )
+    case 'create':
+      return path === '/auctions/create' || path.startsWith('/edit-auction')
+    case 'my-auctions':
+      return path.startsWith('/my-auctions')
+    case 'profile':
+      return path.startsWith('/profile')
+    default:
+      return path === item.href || path.startsWith(`${item.href}/`)
+  }
 }
 
 export default function AppSidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }) {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const toast = useToast()
 
   const displayName = user?.username || DASHBOARD_USER.name
   const email = user?.email || DASHBOARD_USER.email
+  const avatar = user?.avatar || FALLBACK_AVATAR
 
   const handleLogout = async () => {
     try {
@@ -68,23 +96,28 @@ export default function AppSidebar({ collapsed, onToggle, mobileOpen, onCloseMob
       >
         <div
           className={cn(
-            'flex h-16 items-center border-b border-border/70 px-4',
-            collapsed ? 'justify-center' : 'justify-between'
+            'flex h-16 items-center border-b border-border/70 px-3',
+            collapsed ? 'justify-center' : 'justify-between gap-2'
           )}
         >
-          <NavLink to="/dashboard" className="flex items-center gap-2.5" onClick={onCloseMobile}>
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-neutral-950 text-white">
-              <Gavel className="h-4 w-4" aria-hidden="true" />
-            </span>
-            {!collapsed && (
-              <span className="text-base font-semibold tracking-tight">BidArena</span>
-            )}
-          </NavLink>
+          {collapsed ? (
+            <BrandLogo
+              to="/dashboard"
+              onClick={onCloseMobile}
+              imgClassName="h-8 w-8 object-cover object-top"
+            />
+          ) : (
+            <BrandLogo
+              to="/dashboard"
+              onClick={onCloseMobile}
+              imgClassName="h-9 max-w-[148px]"
+            />
+          )}
 
           <button
             type="button"
             onClick={onToggle}
-            className="hidden h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground lg:flex"
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground lg:flex"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? (
@@ -98,22 +131,22 @@ export default function AppSidebar({ collapsed, onToggle, mobileOpen, onCloseMob
         <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Dashboard">
           {SIDEBAR_NAV.map((item) => {
             const Icon = ICONS[item.icon] || LayoutDashboard
+            const active = isNavItemActive(item, location.pathname, location.search)
             return (
               <NavLink
-                key={item.label}
+                key={item.id || item.label}
                 to={item.href}
+                end
                 onClick={onCloseMobile}
                 title={collapsed ? item.label : undefined}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                    collapsed && 'justify-center px-0',
-                    isActive
-                      ? 'bg-neutral-950 text-white'
-                      : 'text-muted-foreground hover:bg-neutral-100 hover:text-foreground'
-                  )
-                }
-                end={item.href === '/dashboard'}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                  collapsed && 'justify-center px-0',
+                  active
+                    ? 'bg-neutral-950 text-white'
+                    : 'text-muted-foreground hover:bg-neutral-100 hover:text-foreground'
+                )}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
@@ -126,7 +159,7 @@ export default function AppSidebar({ collapsed, onToggle, mobileOpen, onCloseMob
           {!collapsed && (
             <div className="mb-3 flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-2.5">
               <img
-                src={DASHBOARD_USER.avatar}
+                src={avatar}
                 alt=""
                 className="h-9 w-9 rounded-full object-cover ring-1 ring-border/70"
               />

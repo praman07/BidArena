@@ -1,4 +1,4 @@
-const auctionEngineService = require('../auction-engine')
+const auctionEngineService = require('../auction-engine/AuctionEngine')
 // auctionRoomStore removed, we will get stats from Socket.IO natively if needed
 
 /**

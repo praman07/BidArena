@@ -49,3 +49,55 @@ export const getAuctionsRequest = async ({ page = 1, limit = 100 } = {}) => {
   })
   return data.data
 }
+
+/** Public landing featured ACTIVE auctions (newest, max 8). */
+export const getFeaturedAuctionsRequest = async () => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.FEATURED)
+  return data.data.auctions || []
+}
+
+export const getAuctionByIdRequest = async (id) => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.DETAIL(id))
+  return data.data
+}
+
+export const getMyAuctionsRequest = async () => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.MY)
+  return data.data.auctions
+}
+
+export const deleteAuctionRequest = async (id) => {
+  const { data } = await api.delete(API_ENDPOINTS.AUCTIONS.DELETE(id))
+  return data.data
+}
+
+/**
+ * Updates an auction owned by the authenticated user.
+ * Pass publish: true to promote a DRAFT listing to live/upcoming.
+ */
+export const updateAuctionRequest = async ({ id, formValues, publish = false }) => {
+  const payload = {
+    title: formValues.productName.trim(),
+    description: formValues.detailedDescription.trim(),
+    shortDescription: formValues.shortDescription?.trim() || '',
+    category: formValues.category,
+    brand: formValues.brand?.trim() || '',
+    condition: formValues.condition,
+    startingBid: Number(formValues.startingPrice),
+    reservePrice: Number(formValues.reservePrice),
+    bidIncrement: Number(formValues.bidIncrement),
+    startTime: new Date(formValues.startDate).toISOString(),
+    endTime: new Date(formValues.endDate).toISOString(),
+    timezone: formValues.timezone || 'UTC',
+    shippingAvailable: Boolean(formValues.shippingAvailable),
+    pickupAvailable: Boolean(formValues.pickupAvailable),
+    shippingCost: Number(formValues.shippingCost ?? 0),
+    location: formValues.location.trim(),
+    privateNotes: formValues.privateNotes?.trim() || '',
+    publish: Boolean(publish),
+    acceptTerms: Boolean(formValues.acceptTerms),
+  }
+
+  const { data } = await api.patch(API_ENDPOINTS.AUCTIONS.UPDATE(id), payload)
+  return data.data.auction
+}

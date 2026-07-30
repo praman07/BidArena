@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Gavel, Menu, X } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import BrandLogo from '@/components/common/BrandLogo'
+import useAuth from '@/features/auth/hooks/useAuth'
+import { useToast } from '@/components/ui/useToast'
 import { NAV_LINKS } from '../constants/landingData'
 
 function NavLink({ link, className, onClick }) {
@@ -27,6 +30,9 @@ function NavLink({ link, className, onClick }) {
 }
 
 export default function Navbar() {
+  const { user, isAuthenticated, isInitializing, logout } = useAuth()
+  const navigate = useNavigate()
+  const toast = useToast()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -36,6 +42,114 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      toast.success('You have been signed out')
+      setMobileOpen(false)
+      navigate('/login', { replace: true })
+    } catch {
+      toast.error('Could not sign you out. Please try again.')
+    }
+  }
+
+  const authActions = () => {
+    if (isInitializing) {
+      return <div className="h-8 w-28 animate-pulse rounded-lg bg-neutral-100" aria-hidden="true" />
+    }
+
+    if (isAuthenticated) {
+      return (
+        <>
+          <Link
+            to="/dashboard"
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'rounded-lg')}
+          >
+            {user?.username || 'Dashboard'}
+          </Link>
+          <Link
+            to="/profile"
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'rounded-lg')}
+          >
+            Profile
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={cn(buttonVariants({ size: 'sm' }), 'rounded-lg')}
+          >
+            Logout
+          </button>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <Link
+          to="/login"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'rounded-lg')}
+        >
+          Login
+        </Link>
+        <Link to="/register" className={cn(buttonVariants({ size: 'sm' }), 'rounded-lg')}>
+          Register
+        </Link>
+      </>
+    )
+  }
+
+  const mobileAuthActions = () => {
+    if (isInitializing) return null
+
+    if (isAuthenticated) {
+      return (
+        <div className="mt-2 flex flex-col gap-2">
+          <Link
+            to="/dashboard"
+            className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium"
+            onClick={() => setMobileOpen(false)}
+          >
+            Dashboard
+          </Link>
+          <Link
+            to="/profile"
+            className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium"
+            onClick={() => setMobileOpen(false)}
+          >
+            Profile
+          </Link>
+          <button
+            type="button"
+            className="rounded-lg bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="mt-2 flex flex-col gap-2">
+        <Link
+          to="/login"
+          className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium"
+          onClick={() => setMobileOpen(false)}
+        >
+          Login
+        </Link>
+        <Link
+          to="/register"
+          className="rounded-lg bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground"
+          onClick={() => setMobileOpen(false)}
+        >
+          Register
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <header
@@ -51,12 +165,7 @@ export default function Navbar() {
           scrolled ? 'h-14' : 'h-16'
         )}
       >
-        <Link to="/" className="flex items-center gap-2.5" aria-label="BidArena home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-950 text-white">
-            <Gavel className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span className="text-base font-semibold tracking-tight">BidArena</span>
-        </Link>
+        <BrandLogo imgClassName={scrolled ? 'h-8 sm:h-9' : 'h-9 sm:h-10'} />
 
         <div className="hidden items-center gap-8 lg:flex">
           {NAV_LINKS.map((link) => (
@@ -64,20 +173,7 @@ export default function Navbar() {
           ))}
         </div>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          <Link
-            to="/login"
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'rounded-lg')}
-          >
-            Login
-          </Link>
-          <Link
-            to="/register"
-            className={cn(buttonVariants({ size: 'sm' }), 'rounded-lg')}
-          >
-            Register
-          </Link>
-        </div>
+        <div className="hidden items-center gap-2 lg:flex">{authActions()}</div>
 
         <button
           type="button"
@@ -105,22 +201,7 @@ export default function Navbar() {
                 onClick={() => setMobileOpen(false)}
               />
             ))}
-            <div className="mt-2 flex flex-col gap-2">
-              <Link
-                to="/login"
-                className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium"
-                onClick={() => setMobileOpen(false)}
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="rounded-lg bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground"
-                onClick={() => setMobileOpen(false)}
-              >
-                Register
-              </Link>
-            </div>
+            {mobileAuthActions()}
           </div>
         </div>
       )}

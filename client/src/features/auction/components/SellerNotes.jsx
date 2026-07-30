@@ -42,7 +42,10 @@ export default function SellerNotes({ register, errors, watch }) {
         </div>
 
         <label className="flex items-start gap-2.5 text-sm leading-5">
-          <Checkbox className="mt-0.5" {...register('acceptTerms')} />
+          <Checkbox
+            className="mt-0.5"
+            {...register('acceptTerms')}
+          />
           <span>
             I agree to BidArena’s auction terms, authenticity policy, and seller obligations.
           </span>

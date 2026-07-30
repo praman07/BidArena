@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 
 const AUCTION_STATUSES = ['DRAFT', 'ACTIVE', 'UPCOMING', 'LIVE', 'ENDED', 'CANCELLED']
-
+const PAYMENT_STATUSES = ['PENDING', 'PAID', 'FAILED']
 
 const auctionSchema = new mongoose.Schema(
   {
@@ -144,6 +144,41 @@ const auctionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    winner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    paymentStatus: {
+      type: String,
+      enum: PAYMENT_STATUSES,
+      default: 'PENDING',
+      index: true,
+    },
+    paymentId: {
+      type: String,
+      default: '',
+    },
+    orderId: {
+      type: String,
+      default: '',
+    },
+    signature: {
+      type: String,
+      default: '',
+    },
+    paidAt: {
+      type: Date,
+    },
+    paymentMethod: {
+      type: String,
+      default: '',
+    },
+    transactionAmount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
     totalBidsCount: {
       type: Number,
       default: 0,
@@ -156,6 +191,19 @@ const auctionSchema = new mongoose.Schema(
 )
 
 auctionSchema.index({ endTime: 1, status: 1 })
+
+const mapUserRef = (user) => {
+  if (!user) return null
+  if (typeof user === 'object' && (user.username || user.email)) {
+    return {
+      id: user._id?.toString?.() || user.id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+    }
+  }
+  return user._id?.toString?.() || user.toString?.() || user
+}
 
 auctionSchema.methods.toPublicJSON = function toPublicJSON() {
   const seller = this.seller
@@ -186,7 +234,16 @@ auctionSchema.methods.toPublicJSON = function toPublicJSON() {
     seller: sellerPayload,
     participants: this.participants,
     participantCount: Array.isArray(this.participants) ? this.participants.length : 0,
+    highestBidder: mapUserRef(this.highestBidder),
+    winner: mapUserRef(this.winner),
+    totalBidsCount: this.totalBidsCount || 0,
     status: this.status,
+    paymentStatus: this.paymentStatus || 'PENDING',
+    paymentId: this.paymentId || '',
+    orderId: this.orderId || '',
+    paidAt: this.paidAt || null,
+    paymentMethod: this.paymentMethod || '',
+    transactionAmount: this.transactionAmount || 0,
     startTime: this.startTime,
     endTime: this.endTime,
     timezone: this.timezone,
@@ -203,3 +260,4 @@ const Auction = mongoose.model('Auction', auctionSchema)
 
 module.exports = Auction
 module.exports.AUCTION_STATUSES = AUCTION_STATUSES
+module.exports.PAYMENT_STATUSES = PAYMENT_STATUSES

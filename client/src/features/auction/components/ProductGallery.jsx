@@ -41,6 +41,8 @@ export default function ProductGallery({ images = [], title }) {
           src={active.src}
           alt={active.alt || title}
           className="h-full w-full object-cover transition-opacity duration-300"
+          loading="eager"
+          decoding="async"
         />
         <div
           aria-hidden="true"

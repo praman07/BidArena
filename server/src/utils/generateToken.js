@@ -24,7 +24,8 @@ const parseExpiryToMs = (expiresIn) => {
 const cookieOptions = () => ({
   httpOnly: true,
   secure: env.isProduction,
-  sameSite: 'lax',
+  // Cross-site (Vercel ↔ Render) requires SameSite=None + Secure in production.
+  sameSite: env.isProduction ? 'none' : 'lax',
   path: '/',
   maxAge: parseExpiryToMs(env.JWT_EXPIRES_IN),
 })

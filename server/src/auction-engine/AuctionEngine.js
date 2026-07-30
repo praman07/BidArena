@@ -23,7 +23,7 @@ class AuctionEngineService {
    */
   initAuction(data = {}) {
     const auctionId = data.auctionId || `auction_${Date.now()}`
-    
+
     if (!this.auctions.has(auctionId)) {
       const startingPrice = Number(data.startingPrice) || 0
       const minIncrement = Number(data.minIncrement) || 1
@@ -39,6 +39,10 @@ class AuctionEngineService {
         totalBidsCount: 0,
         lastBidAt: null,
         bidHistory: [],
+        sellerId: data.sellerId || null,
+        mongoKey: data.mongoKey || auctionId,
+        endTime: data.endTime || null,
+        startTime: data.startTime || null,
         createdAt: new Date(),
       })
 
@@ -47,14 +51,16 @@ class AuctionEngineService {
         Timeline.create({
           auctionId,
           eventType: 'AUCTION_CREATED',
-          details: { startingPrice: startingPrice, minIncrement: minIncrement },
+          details: { startingPrice, minIncrement },
         }),
         Timeline.create({
           auctionId,
           eventType: 'AUCTION_STARTED',
-          details: { status: 'ACTIVE' },
-        })
-      ]).catch(err => console.error(`[AuctionEngine] Failed to persist creation timeline for ${auctionId}:`, err))
+          details: { status: data.status || 'ACTIVE' },
+        }),
+      ]).catch((err) =>
+        console.error(`[AuctionEngine] Failed to persist creation timeline for ${auctionId}:`, err)
+      )
     }
 
     return this.auctions.get(auctionId)
@@ -111,15 +117,10 @@ class AuctionEngineService {
 
   /**
    * Gets the authoritative state snapshot of an auction.
-   * @param {string} auctionId
-   * @returns {Object|null}
+   * Does not auto-create empty auctions (Domain A registers via bridge).
    */
   getAuctionState(auctionId) {
-    if (!this.auctions.has(auctionId)) {
-      // Auto-initialize standard active state if requested for testing/mocking
-      this.initAuction({ auctionId })
-    }
-    return this.auctions.get(auctionId)
+    return this.auctions.get(auctionId) || null
   }
 
   /**
@@ -158,7 +159,7 @@ class AuctionEngineService {
    * @param {Object} bidPayload
    * @private
    */
-  _executeAtomicBidUpdate(auctionId, bidPayload) {
+  async _executeAtomicBidUpdate(auctionId, bidPayload) {
     const state = this.getAuctionState(auctionId)
     if (!state) {
       return {
@@ -169,7 +170,7 @@ class AuctionEngineService {
     }
 
     // Reject late bids if auction is closed/locked
-    if (state.status !== 'ACTIVE') {
+    if (state.status !== 'ACTIVE' && state.status !== 'LIVE') {
       return {
         success: false,
         code: 'AUCTION_CLOSED',
@@ -179,15 +180,19 @@ class AuctionEngineService {
 
     // Build current state context for validator
     const stateContext = {
-      status: state.status,
+      status: state.status === 'LIVE' ? 'ACTIVE' : state.status,
       currentHighestBid: state.currentHighestBid,
       currentHighestBidderId: state.highestBidder?.userId || null,
       minIncrement: state.minIncrement,
       startingPrice: state.startingPrice,
+      sellerId: state.sellerId || null,
     }
 
     // Execute validation rules against live state
-    const validation = validateBid(bidPayload, stateContext)
+    const validation = validateBid(
+      { ...bidPayload, auctionId: bidPayload.auctionId || auctionId },
+      stateContext
+    )
     if (!validation.isValid) {
       return {
         success: false,
@@ -217,6 +222,7 @@ class AuctionEngineService {
     state.highestBidder = bidder
     state.totalBidsCount += 1
     state.lastBidAt = bidRecord.timestamp
+    state.status = 'ACTIVE'
     state.bidHistory.unshift(bidRecord)
 
     // Keep history capped at last 50 bids for memory efficiency
@@ -224,47 +230,54 @@ class AuctionEngineService {
       state.bidHistory.pop()
     }
 
-    // --- ASYNC DATABASE PERSISTENCE ---
-    // Fire and forget to not block the atomic execution queue
-    Promise.all([
-      Bid.create({
-        bidId: bidRecord.bidId,
-        auctionId,
-        userId: bidRecord.userId,
-        amount: bidAmount,
-        timestamp: bidRecord.timestamp
-      }),
-      Auction.updateOne(
-        { auctionId },
-        { 
-          $set: { 
+    const mongoKey = state.mongoKey || auctionId
+
+    // Persist before acknowledging so Domain A live reads stay consistent
+    try {
+      await Promise.all([
+        Bid.create({
+          bidId: bidRecord.bidId,
+          auctionId: mongoKey,
+          userId: bidRecord.userId,
+          amount: bidAmount,
+          timestamp: bidRecord.timestamp,
+        }),
+        Auction.findByIdAndUpdate(auctionId, {
+          $set: {
+            currentBid: bidAmount,
             currentHighestBid: bidAmount,
             highestBidder: bidRecord.userId,
             totalBidsCount: state.totalBidsCount,
-            lastBidAt: bidRecord.timestamp
-          }
-        },
-        { upsert: true }
-      ),
-      Timeline.create({
-        auctionId,
-        eventType: 'BID_PLACED',
-        details: { bidId: bidRecord.bidId, amount: bidAmount, userId: bidRecord.userId },
-        timestamp: bidRecord.timestamp
-      })
-    ]).catch(err => console.error(`[AuctionEngine] Failed to persist bid ${bidRecord.bidId}:`, err))
+            lastBidAt: bidRecord.timestamp,
+            status: 'LIVE',
+          },
+          $addToSet: { participants: bidRecord.userId },
+        }),
+        Timeline.create({
+          auctionId: mongoKey,
+          eventType: 'BID_PLACED',
+          details: { bidId: bidRecord.bidId, amount: bidAmount, userId: bidRecord.userId },
+          timestamp: bidRecord.timestamp,
+        }),
+      ])
+    } catch (err) {
+      console.error(`[AuctionEngine] Failed to persist bid ${bidRecord.bidId}:`, err)
+    }
 
     // Prepare clean payload for broadcasting
     const broadcastPayload = {
       auctionId: state.auctionId,
       currentHighestBid: state.currentHighestBid,
+      currentBid: state.currentHighestBid,
       highestBidder: {
+        id: state.highestBidder.userId,
         userId: state.highestBidder.userId,
         username: state.highestBidder.username,
       },
       totalBidsCount: state.totalBidsCount,
       lastBidAt: state.lastBidAt,
       latestBid: bidRecord,
+      status: 'LIVE',
     }
 
     return {
@@ -283,57 +296,90 @@ class AuctionEngineService {
    */
   closeAuction(auctionId) {
     const state = this.getAuctionState(auctionId)
-    if (!state || state.status === 'CLOSED') {
+    if (!state || state.status === 'ENDED' || state.status === 'CLOSED') {
       return null
     }
 
-    // Lock the auction
-    state.status = 'CLOSED'
-    console.log(`[AuctionEngine] Auction ${auctionId} locked and closed.`)
+    // Lock the auction (Domain A schema uses ENDED)
+    state.status = 'ENDED'
 
     const broadcastService = require('./BroadcastManager')
 
     // Broadcast final state
-    broadcastService.broadcastAuctionState(auctionId, state)
+    broadcastService.broadcastAuctionState(auctionId, {
+      ...state,
+      status: 'ENDED',
+      currentBid: state.currentHighestBid,
+    })
 
     // Determine and broadcast winner
     if (state.highestBidder) {
       const winnerPayload = {
         auctionId: state.auctionId,
-        winner: state.highestBidder,
+        winner: {
+          id: state.highestBidder.userId,
+          userId: state.highestBidder.userId,
+          username: state.highestBidder.username,
+        },
         winningBid: state.currentHighestBid,
+        winningAmount: state.currentHighestBid,
+        amount: state.currentHighestBid,
       }
       broadcastService.broadcastAuctionWinner(auctionId, winnerPayload)
 
-      // Async database persistence for winner
+      const mongoKey = state.mongoKey || state.auctionId
       Promise.all([
-        Winner.create({
-          auctionId: state.auctionId,
-          userId: state.highestBidder.userId,
-          winningBid: state.currentHighestBid,
-        }),
+        Winner.findOneAndUpdate(
+          { auctionId: mongoKey },
+          {
+            auctionId: mongoKey,
+            userId: state.highestBidder.userId,
+            winningBid: state.currentHighestBid,
+            timestamp: new Date(),
+          },
+          { upsert: true, new: true }
+        ),
         Timeline.create({
-          auctionId,
+          auctionId: mongoKey,
           eventType: 'WINNER_SELECTED',
-          details: { winnerUserId: state.highestBidder.userId, winningBid: state.currentHighestBid }
-        })
-      ]).catch(err => console.error(`[AuctionEngine] Failed to persist winner for ${auctionId}:`, err))
-    } else {
-      console.log(`[AuctionEngine] Auction ${auctionId} closed with no winner.`)
+          details: {
+            winnerUserId: state.highestBidder.userId,
+            winningBid: state.currentHighestBid,
+          },
+        }),
+      ]).catch((err) =>
+        console.error(`[AuctionEngine] Failed to persist winner for ${auctionId}:`, err)
+      )
     }
 
-    // Async database persistence for auction closure
+    // Persist auction closure on Mongo _id
+    const closureUpdate = {
+      status: 'ENDED',
+    }
+    if (state.highestBidder) {
+      closureUpdate.winner = state.highestBidder.userId
+      closureUpdate.highestBidder = state.highestBidder.userId
+      closureUpdate.paymentStatus = 'PENDING'
+      closureUpdate.transactionAmount = state.currentHighestBid
+      closureUpdate.currentBid = state.currentHighestBid
+      closureUpdate.currentHighestBid = state.currentHighestBid
+    }
+
     Promise.all([
-      Auction.updateOne({ auctionId }, { $set: { status: 'CLOSED' } }, { upsert: true }),
+      Auction.findByIdAndUpdate(auctionId, { $set: closureUpdate }),
       Timeline.create({
-        auctionId,
+        auctionId: state.mongoKey || auctionId,
         eventType: 'AUCTION_CLOSED',
-        details: { 
+        details: {
           hasWinner: !!state.highestBidder,
-          winningBid: state.currentHighestBid 
-        }
-      })
-    ]).catch(err => console.error(`[AuctionEngine] Failed to persist closure for ${auctionId}:`, err))
+          winningBid: state.currentHighestBid,
+        },
+      }),
+    ]).catch((err) =>
+      console.error(`[AuctionEngine] Failed to persist closure for ${auctionId}:`, err)
+    )
+
+    broadcastService.broadcastTimerEnded(auctionId)
 
     return state
   }

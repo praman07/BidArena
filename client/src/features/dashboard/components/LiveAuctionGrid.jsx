@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
 import AuctionCard from '@/features/auction/components/AuctionCard'
-import { LIVE_AUCTIONS } from '../constants/dashboardData'
 import EmptyState from './EmptyState'
 
-export default function LiveAuctionGrid({ auctions = LIVE_AUCTIONS }) {
+export default function LiveAuctionGrid({ auctions = [] }) {
   if (!auctions.length) {
     return (
       <EmptyState

@@ -2,6 +2,20 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '../constants/auctionDetailsData'
 
 export default function BidHistory({ bids = [] }) {
+  if (!bids.length) {
+    return (
+      <div
+        className="rounded-xl border border-dashed border-border bg-neutral-50/60 px-6 py-14 text-center"
+        role="status"
+      >
+        <p className="text-base font-medium tracking-tight">No bids yet.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Be the first to place a bid when the room opens.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-border/70">
       <div className="overflow-x-auto">

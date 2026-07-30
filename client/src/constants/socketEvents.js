@@ -1,2 +1,18 @@
-// TODO: Define socket event name constants
-export const SOCKET_EVENTS = {}
+export const SOCKET_EVENTS = {
+  JOIN_AUCTION: 'joinAuction',
+  LEAVE_AUCTION: 'leaveAuction',
+  PLACE_BID: 'placeBid',
+  JOIN_MARKETPLACE: 'joinMarketplace',
+  LEAVE_MARKETPLACE: 'leaveMarketplace',
+  AUCTION_JOINED: 'auctionJoined',
+  BID_PLACED: 'bidPlaced',
+  AUCTION_UPDATED: 'auctionUpdated',
+  COUNTDOWN_UPDATED: 'countdownUpdated',
+  AUCTION_ENDED: 'auctionEnded',
+  WINNER_ANNOUNCED: 'winnerAnnounced',
+  MARKETPLACE_UPDATED: 'marketplaceUpdated',
+  BID_ERROR: 'bidError',
+  CONNECT: 'connect',
+  DISCONNECT: 'disconnect',
+  CONNECT_ERROR: 'connect_error',
+}
