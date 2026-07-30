@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
 import Navbar from '@/features/public/components/Navbar'
@@ -21,11 +22,35 @@ import {
 const Footer = lazy(() => import('@/features/public/components/Footer'))
 
 export default function BrowseAuctions() {
-  const [filters, setFilters] = useState(DEFAULT_FILTERS)
+  const [searchParams] = useSearchParams()
+  const statusParam = searchParams.get('status')
+
+  const [filters, setFilters] = useState(() => ({
+    ...DEFAULT_FILTERS,
+    status:
+      statusParam === 'LIVE' || statusParam === 'ACTIVE'
+        ? 'LIVE'
+        : statusParam === 'UPCOMING' || statusParam === 'ENDED'
+          ? statusParam
+          : DEFAULT_FILTERS.status,
+  }))
   const [page, setPage] = useState(1)
   const [auctions, setAuctions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!statusParam) return
+    setFilters((prev) => ({
+      ...prev,
+      status:
+        statusParam === 'LIVE' || statusParam === 'ACTIVE'
+          ? 'LIVE'
+          : statusParam === 'UPCOMING' || statusParam === 'ENDED'
+            ? statusParam
+            : prev.status,
+    }))
+  }, [statusParam])
 
   const loadAuctions = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true)

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Gavel } from 'lucide-react'
+import BrandLogo from '@/components/common/BrandLogo'
 import { FOOTER_COLUMNS } from '../constants/landingData'
 
 // Lucide no longer ships brand icons, so these are minimal inline marks.
@@ -68,12 +68,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid gap-12 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2.5" aria-label="BidArena home">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-950 text-white">
-                <Gavel className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <span className="text-base font-semibold tracking-tight">BidArena</span>
-            </Link>
+            <BrandLogo imgClassName="h-9" />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
               The premium marketplace for real-time online auctions. Discover,
               bid, and win extraordinary items from verified sellers worldwide.

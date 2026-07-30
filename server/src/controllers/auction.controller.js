@@ -23,6 +23,14 @@ const getAllAuctions = catchAsync(async (req, res) => {
   return ApiResponse.ok(res, 'Auctions fetched successfully', result)
 })
 
+const getFeaturedAuctions = catchAsync(async (req, res) => {
+  const auctions = await auctionService.getFeaturedAuctions({
+    limit: req.query.limit,
+  })
+
+  return ApiResponse.ok(res, 'Featured auctions fetched successfully', { auctions })
+})
+
 const getAuctionById = catchAsync(async (req, res) => {
   const result = await auctionService.getAuctionById(req.params.id)
   return ApiResponse.ok(res, 'Auction fetched successfully', result)
@@ -55,6 +63,7 @@ const updateAuction = catchAsync(async (req, res) => {
 module.exports = {
   createAuction,
   getAllAuctions,
+  getFeaturedAuctions,
   getAuctionById,
   getMyAuctions,
   deleteAuction,

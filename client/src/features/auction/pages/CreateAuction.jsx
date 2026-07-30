@@ -15,6 +15,7 @@ import AuctionPreviewCard from '../components/AuctionPreviewCard'
 import { createAuctionRequest } from '../services/auctionService'
 import {
   createAuctionDefaults,
+  createAuctionDraftSchema,
   createAuctionSchema,
 } from '../validation/createAuctionSchema'
 
@@ -29,6 +30,9 @@ export default function CreateAuction() {
   const {
     register,
     handleSubmit,
+    getValues,
+    setError,
+    clearErrors,
     watch,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -42,14 +46,14 @@ export default function CreateAuction() {
   const submitAuction = async (data, { saveAsDraft = false } = {}) => {
     if (images.length === 0) {
       setImageError('Upload at least one product image')
-      toast.error('Add at least one product image before publishing')
+      toast.error('Add at least one product image before saving')
       return
     }
 
     const imageFiles = images.map((image) => image.file).filter(Boolean)
     if (imageFiles.length === 0) {
       setImageError('Upload at least one product image')
-      toast.error('Add at least one product image before publishing')
+      toast.error('Add at least one product image before saving')
       return
     }
 
@@ -65,6 +69,7 @@ export default function CreateAuction() {
       if (saveAsDraft) {
         setDraftStatus('Draft · Saved')
         toast.success('Draft saved successfully')
+        navigate('/my-auctions')
         return
       }
 
@@ -80,14 +85,29 @@ export default function CreateAuction() {
     await submitAuction(data, { saveAsDraft: false })
   })
 
-  const onSaveDraft = handleSubmit(async (data) => {
+  const onSaveDraft = async () => {
+    clearErrors()
+    const raw = getValues()
+    const parsed = createAuctionDraftSchema.safeParse(raw)
+
+    if (!parsed.success) {
+      parsed.error.issues.forEach((issue) => {
+        const field = issue.path?.[0]
+        if (field) {
+          setError(field, { type: 'manual', message: issue.message })
+        }
+      })
+      toast.error(parsed.error.issues[0]?.message || 'Complete the required fields to save a draft')
+      return
+    }
+
     setIsDraftSaving(true)
     try {
-      await submitAuction(data, { saveAsDraft: true })
+      await submitAuction(parsed.data, { saveAsDraft: true })
     } finally {
       setIsDraftSaving(false)
     }
-  })
+  }
 
   return (
     <div className="mx-auto max-w-7xl">

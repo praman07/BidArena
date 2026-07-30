@@ -5,7 +5,9 @@ import { ChevronRight, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/useToast'
+import useAuth from '@/features/auth/hooks/useAuth'
 import useAuctionSocket from '@/hooks/useAuctionSocket'
+import useAuctionPayment from '@/features/payment/hooks/useAuctionPayment'
 import ProductGallery from '@/features/auction/components/ProductGallery'
 import DetailsLoadingSkeleton from '@/features/auction/components/DetailsLoadingSkeleton'
 import { getAuctionByIdRequest } from '@/features/auction/services/auctionService'
@@ -21,6 +23,7 @@ import WinnerModal from '../components/WinnerModal'
 
 export default function AuctionRoom() {
   const { id } = useParams()
+  const { user } = useAuth()
   const toast = useToast()
   const [auction, setAuction] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -29,6 +32,30 @@ export default function AuctionRoom() {
 
   const { live, placeBid, clearError, clearSuccess, dismissWinner } = useAuctionSocket(id, {
     enabled: Boolean(id),
+  })
+
+  const applyPaymentAuction = useCallback((paidAuction) => {
+    if (!paidAuction) return
+    setAuction((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        status: paidAuction.status || prev.status,
+        apiStatus: paidAuction.status || prev.apiStatus,
+        winner: paidAuction.winner || prev.winner,
+        paymentStatus: paidAuction.paymentStatus || prev.paymentStatus,
+        paymentId: paidAuction.paymentId || prev.paymentId,
+        orderId: paidAuction.orderId || prev.orderId,
+        paidAt: paidAuction.paidAt || prev.paidAt,
+        transactionAmount: paidAuction.transactionAmount || prev.transactionAmount,
+      }
+    })
+  }, [])
+
+  const { paying, startPayment } = useAuctionPayment({
+    auctionId: id,
+    onPaid: applyPaymentAuction,
+    onFailed: applyPaymentAuction,
   })
 
   const loadAuction = useCallback(async () => {
@@ -120,6 +147,17 @@ export default function AuctionRoom() {
 
   const ended = view.status === 'ENDED' || live.ended
 
+  const winnerId =
+    live.winner?.winner?.id ||
+    live.winner?.winner?.userId ||
+    view.winner?.id ||
+    view.highestBidder?.id ||
+    null
+  const isWinner =
+    Boolean(user?.id) && Boolean(winnerId) && String(user.id) === String(winnerId)
+  const canPay =
+    Boolean(ended && isWinner && (view.paymentStatus || 'PENDING') !== 'PAID')
+
   return (
     <div className="space-y-8 pb-10">
       <nav aria-label="Breadcrumb">
@@ -198,6 +236,12 @@ export default function AuctionRoom() {
         winningAmount={live.winner?.winningAmount}
         message={live.winner?.message}
         onClose={dismissWinner}
+        canPay={canPay}
+        paying={paying}
+        onPayNow={() => {
+          dismissWinner()
+          startPayment()
+        }}
       />
     </div>
   )

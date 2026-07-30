@@ -238,7 +238,6 @@ const endAuction = async (auctionId) => {
 
   if (auction.status !== 'ENDED') {
     auction.status = 'ENDED'
-    await auction.save()
   }
 
   let winnerPayload = null
@@ -247,12 +246,22 @@ const endAuction = async (auctionId) => {
   if (highest) {
     const winningAmount = auction.currentBid ?? auction.currentHighestBid ?? 0
     const key = auction.auctionId || auction._id.toString()
+    const winnerUserId = highest._id || highest
+
+    auction.winner = winnerUserId
+    auction.highestBidder = winnerUserId
+    if (auction.paymentStatus !== 'PAID') {
+      auction.paymentStatus = 'PENDING'
+      auction.transactionAmount = winningAmount
+    }
+
+    await auction.save()
 
     await Winner.findOneAndUpdate(
       { auctionId: key },
       {
         auctionId: key,
-        userId: highest._id || highest,
+        userId: winnerUserId,
         winningBid: winningAmount,
         timestamp: new Date(),
       },
@@ -265,6 +274,8 @@ const endAuction = async (auctionId) => {
       winningAmount,
       amount: winningAmount,
     }
+  } else {
+    await auction.save()
   }
 
   return {

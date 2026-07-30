@@ -353,8 +353,20 @@ class AuctionEngineService {
     }
 
     // Persist auction closure on Mongo _id
+    const closureUpdate = {
+      status: 'ENDED',
+    }
+    if (state.highestBidder) {
+      closureUpdate.winner = state.highestBidder.userId
+      closureUpdate.highestBidder = state.highestBidder.userId
+      closureUpdate.paymentStatus = 'PENDING'
+      closureUpdate.transactionAmount = state.currentHighestBid
+      closureUpdate.currentBid = state.currentHighestBid
+      closureUpdate.currentHighestBid = state.currentHighestBid
+    }
+
     Promise.all([
-      Auction.findByIdAndUpdate(auctionId, { $set: { status: 'ENDED' } }),
+      Auction.findByIdAndUpdate(auctionId, { $set: closureUpdate }),
       Timeline.create({
         auctionId: state.mongoKey || auctionId,
         eventType: 'AUCTION_CLOSED',

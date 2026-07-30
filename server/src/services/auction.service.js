@@ -83,29 +83,35 @@ const createAuction = async ({ sellerId, payload, files = [] }) => {
 
   await auction.populate('seller', 'username email avatar createdAt')
 
-  // Domain B: register auction in engine + start timer when live
-  try {
-    const auctionBridge = require('../integration/auctionBridge.service')
-    const broadcastService = require('../auction-engine/BroadcastManager')
-    auctionBridge.registerAuction(auction)
-    broadcastService.emitMarketplace({
-      type: 'created',
-      auctionId: auction._id.toString(),
-      auction: auction.toPublicJSON(),
-    })
-  } catch (err) {
-    console.error('[createAuction] Failed to register auction engine:', err.message)
+  // Domain B: register auction in engine + start timer when published (not draft)
+  if (status !== 'DRAFT') {
+    try {
+      const auctionBridge = require('../integration/auctionBridge.service')
+      const broadcastService = require('../auction-engine/BroadcastManager')
+      auctionBridge.registerAuction(auction)
+      broadcastService.emitMarketplace({
+        type: 'created',
+        auctionId: auction._id.toString(),
+        auction: auction.toPublicJSON(),
+      })
+    } catch (err) {
+      console.error('[createAuction] Failed to register auction engine:', err.message)
+    }
   }
 
   return auction
 }
+
+const PUBLIC_LIST_STATUSES = ['ACTIVE', 'LIVE', 'UPCOMING']
+const FEATURED_STATUSES = ['ACTIVE', 'LIVE']
 
 const getAllAuctions = async ({ page = 1, limit = 12 } = {}) => {
   const pageNum = Math.max(1, parseInt(page, 10) || 1)
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 12))
   const skip = (pageNum - 1) * limitNum
 
-  const filter = { status: 'ACTIVE' }
+  // Include LIVE — join-room flow promotes ACTIVE → LIVE, so ACTIVE-only hid real listings.
+  const filter = { status: { $in: PUBLIC_LIST_STATUSES } }
 
   const [auctions, total] = await Promise.all([
     Auction.find(filter)
@@ -127,6 +133,45 @@ const getAllAuctions = async ({ page = 1, limit = 12 } = {}) => {
   }
 }
 
+/**
+ * Featured public auctions for the landing page.
+ * Newest first, hard-capped at 8. Includes ACTIVE + LIVE (engine promotes to LIVE).
+ */
+const getFeaturedAuctions = async ({ limit = 8 } = {}) => {
+  const limitNum = Math.min(8, Math.max(1, parseInt(limit, 10) || 8))
+  const now = new Date()
+
+  const auctions = await Auction.find({
+    status: { $in: FEATURED_STATUSES },
+    endTime: { $gt: now },
+  })
+    .populate('seller', 'username')
+    .sort({ createdAt: -1 })
+    .limit(limitNum)
+
+  return auctions.map((auction) => {
+    const seller = auction.seller
+    const sellerName =
+      seller && typeof seller === 'object' && seller.username
+        ? seller.username
+        : 'Seller'
+
+    return {
+      _id: auction._id.toString(),
+      id: auction._id.toString(),
+      title: auction.title,
+      category: auction.category,
+      images: auction.images || [],
+      currentBid: auction.currentBid ?? auction.startingBid ?? 0,
+      startingBid: auction.startingBid ?? 0,
+      totalBids: auction.totalBidsCount || 0,
+      sellerName,
+      endTime: auction.endTime,
+      status: auction.status === 'ACTIVE' ? 'LIVE' : auction.status,
+    }
+  })
+}
+
 const getAuctionById = async (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw ApiError.notFound('Auction not found')
@@ -134,7 +179,8 @@ const getAuctionById = async (id) => {
 
   const auction = await Auction.findById(id)
     .populate('seller', 'username email avatar createdAt')
-    .populate('highestBidder', 'username avatar')
+    .populate('highestBidder', 'username avatar email')
+    .populate('winner', 'username avatar email')
 
   if (!auction) {
     throw ApiError.notFound('Auction not found')
@@ -279,7 +325,18 @@ const updateAuction = async ({ auctionId, userId, payload }) => {
     auction.currentHighestBid = startingBid
   }
 
-  if (auction.status !== 'DRAFT') {
+  const wasDraft = auction.status === 'DRAFT'
+  const shouldPublish = parseBoolean(payload.publish)
+
+  if (wasDraft) {
+    if (shouldPublish) {
+      if (!parseBoolean(payload.acceptTerms)) {
+        throw ApiError.badRequest('You must accept the terms and conditions to publish')
+      }
+      auction.status = resolveStatus(startTime, endTime, { asDraft: false })
+    }
+    // Editing a draft without publish keeps it as DRAFT
+  } else if (auction.status !== 'ENDED' && auction.status !== 'CANCELLED') {
     auction.status = resolveStatus(startTime, endTime, { asDraft: false })
   }
 
@@ -289,9 +346,19 @@ const updateAuction = async ({ auctionId, userId, payload }) => {
   try {
     const auctionBridge = require('../integration/auctionBridge.service')
     const auctionTimer = require('../auction-engine/TimerManager')
-    // Re-sync Domain B state / timer after owner edits
+    const broadcastService = require('../auction-engine/BroadcastManager')
+    // Re-sync Domain B state / timer after owner edits (skip while still draft)
     auctionTimer.stopTimer(auction._id.toString())
-    auctionBridge.registerAuction(auction)
+    if (auction.status !== 'DRAFT') {
+      auctionBridge.registerAuction(auction)
+      if (wasDraft && shouldPublish) {
+        broadcastService.emitMarketplace({
+          type: 'created',
+          auctionId: auction._id.toString(),
+          auction: auction.toPublicJSON(),
+        })
+      }
+    }
   } catch (err) {
     console.error('[updateAuction] Failed to sync auction engine:', err.message)
   }
@@ -302,6 +369,7 @@ const updateAuction = async ({ auctionId, userId, payload }) => {
 module.exports = {
   createAuction,
   getAllAuctions,
+  getFeaturedAuctions,
   getAuctionById,
   getMyAuctions,
   deleteAuction,

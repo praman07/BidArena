@@ -79,6 +79,7 @@ function mapRecentAuction(auction) {
     currentBid: auction.currentBid ?? auction.startingBid ?? 0,
     status: auction.status,
     displayStatus: auction.displayStatus || auction.status,
+    paymentStatus: auction.paymentStatus || 'PENDING',
     endTime: auction.endTime,
   }
 }

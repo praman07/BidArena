@@ -16,6 +16,7 @@ import RelatedAuctions from '../components/RelatedAuctions'
 import StickyBidCard from '../components/StickyBidCard'
 import DetailsLoadingSkeleton from '../components/DetailsLoadingSkeleton'
 import WinnerModal from '@/features/auction-room/components/WinnerModal'
+import useAuctionPayment from '@/features/payment/hooks/useAuctionPayment'
 import { getAuctionByIdRequest } from '../services/auctionService'
 import {
   DETAIL_TABS,
@@ -82,16 +83,65 @@ export default function AuctionDetails() {
           ? 'LIVE'
           : auction.status
 
+    const winnerFromLive = live.winner?.winner
+      ? {
+          id: live.winner.winner.id || live.winner.winner.userId,
+          username: live.winner.winner.username,
+        }
+      : null
+
     return {
       ...auction,
       status,
+      apiStatus: status === 'ENDED' ? 'ENDED' : auction.apiStatus,
       currentBid: live.currentBid || auction.currentBid,
       participants: live.participants || auction.participants,
       endsInSeconds: live.remainingSeconds,
       highestBidder: live.highestBidder || auction.highestBidder,
+      winner: winnerFromLive || auction.winner,
       bidHistory: live.bids?.length ? live.bids : auction.bidHistory,
     }
   }, [auction, live])
+
+  const winnerId =
+    liveAuction?.winner?.id ||
+    liveAuction?.winner?._id ||
+    (typeof liveAuction?.winner === 'string' ? liveAuction.winner : null) ||
+    liveAuction?.highestBidder?.id ||
+    liveAuction?.highestBidder?._id ||
+    null
+
+  const isEnded =
+    liveAuction?.status === 'ENDED' || liveAuction?.apiStatus === 'ENDED'
+  const isWinner =
+    Boolean(user?.id) && Boolean(winnerId) && String(user.id) === String(winnerId)
+  const paymentStatus = liveAuction?.paymentStatus || 'PENDING'
+  const canPay = Boolean(isEnded && isWinner && paymentStatus !== 'PAID')
+
+  const applyPaymentAuction = useCallback((paidAuction) => {
+    if (!paidAuction) return
+    setAuction((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        status: paidAuction.status || prev.status,
+        apiStatus: paidAuction.status || prev.apiStatus,
+        winner: paidAuction.winner || prev.winner,
+        paymentStatus: paidAuction.paymentStatus || prev.paymentStatus,
+        paymentId: paidAuction.paymentId || prev.paymentId,
+        orderId: paidAuction.orderId || prev.orderId,
+        paidAt: paidAuction.paidAt || prev.paidAt,
+        paymentMethod: paidAuction.paymentMethod || prev.paymentMethod,
+        transactionAmount: paidAuction.transactionAmount || prev.transactionAmount,
+      }
+    })
+  }, [])
+
+  const { paying, startPayment } = useAuctionPayment({
+    auctionId: id,
+    onPaid: applyPaymentAuction,
+    onFailed: applyPaymentAuction,
+  })
 
   const handleShare = async () => {
     const url = window.location.href
@@ -207,6 +257,10 @@ export default function AuctionDetails() {
               onShare={handleShare}
               remainingSeconds={liveAuction.endsInSeconds}
               serverControlled={live.joined}
+              canPay={canPay}
+              paymentStatus={paymentStatus}
+              onPayNow={startPayment}
+              paying={paying}
             />
           </motion.section>
 
@@ -297,6 +351,10 @@ export default function AuctionDetails() {
         visible={showSticky}
         remainingSeconds={liveAuction.endsInSeconds}
         serverControlled={live.joined}
+        canPay={canPay}
+        paymentStatus={paymentStatus}
+        onPayNow={startPayment}
+        paying={paying}
       />
 
       <WinnerModal
@@ -305,6 +363,12 @@ export default function AuctionDetails() {
         winningAmount={live.winner?.winningAmount}
         message={live.winner?.message}
         onClose={dismissWinner}
+        canPay={canPay}
+        onPayNow={() => {
+          dismissWinner()
+          startPayment()
+        }}
+        paying={paying}
       />
     </>
   )

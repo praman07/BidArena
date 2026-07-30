@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Eye, Pencil, PlusCircle, Search, Trash2 } from 'lucide-react'
+import { Eye, Pencil, PlusCircle, Radio, Search, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import {
 
 const STATUS_FILTERS = [
   { label: 'All', value: 'ALL' },
+  { label: 'Draft', value: 'DRAFT' },
   { label: 'Active', value: 'ACTIVE' },
   { label: 'Upcoming', value: 'UPCOMING' },
   { label: 'Ended', value: 'ENDED' },
@@ -311,24 +312,35 @@ export default function MyAuctions() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Link
-                            to={`/auctions/${auction.id}`}
-                            className={cn(
-                              buttonVariants({ size: 'sm', variant: 'outline' }),
-                              'rounded-lg'
-                            )}
-                            title="View details"
-                          >
-                            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                            View
-                          </Link>
+                          {status === 'DRAFT' ? (
+                            <Link
+                              to={`/edit-auction/${auction.id}`}
+                              className={cn(buttonVariants({ size: 'sm' }), 'rounded-lg')}
+                              title="Publish draft"
+                            >
+                              <Radio className="h-3.5 w-3.5" aria-hidden="true" />
+                              Publish
+                            </Link>
+                          ) : (
+                            <Link
+                              to={`/auctions/${auction.id}`}
+                              className={cn(
+                                buttonVariants({ size: 'sm', variant: 'outline' }),
+                                'rounded-lg'
+                              )}
+                              title="View details"
+                            >
+                              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                              View
+                            </Link>
+                          )}
                           <Link
                             to={`/edit-auction/${auction.id}`}
                             className={cn(
                               buttonVariants({ size: 'sm', variant: 'outline' }),
                               'rounded-lg'
                             )}
-                            title="Edit auction"
+                            title={status === 'DRAFT' ? 'Edit draft' : 'Edit auction'}
                           >
                             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                             Edit

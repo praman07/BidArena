@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/useToast'
 import AuctionBasicInfo from '../components/AuctionBasicInfo'
 import AuctionConfiguration from '../components/AuctionConfiguration'
@@ -17,6 +18,7 @@ import {
 } from '../services/auctionService'
 import {
   createAuctionDefaults,
+  createAuctionDraftSchema,
   createAuctionSchema,
 } from '../validation/createAuctionSchema'
 
@@ -47,8 +49,8 @@ function mapAuctionToForm(auction) {
     pickupAvailable: Boolean(auction.pickupAvailable),
     shippingCost: auction.shippingCost ?? 0,
     location: auction.location || '',
-    privateNotes: '',
-    acceptTerms: true,
+    privateNotes: auction.privateNotes || '',
+    acceptTerms: auction.status !== 'DRAFT',
   }
 }
 
@@ -60,12 +62,17 @@ export default function EditAuction() {
   const [loadError, setLoadError] = useState('')
   const [coverImage, setCoverImage] = useState('')
   const [imageCount, setImageCount] = useState(0)
+  const [isDraft, setIsDraft] = useState(false)
+  const [isDraftSaving, setIsDraftSaving] = useState(false)
 
   const {
     register,
     handleSubmit,
     watch,
     reset,
+    getValues,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(createAuctionSchema),
@@ -85,6 +92,7 @@ export default function EditAuction() {
         const data = await getAuctionByIdRequest(id)
         if (cancelled) return
         const auction = data.auction
+        setIsDraft(auction.status === 'DRAFT')
         reset(mapAuctionToForm(auction))
         setCoverImage(auction.images?.[0] || '')
         setImageCount(auction.images?.length || 0)
@@ -103,15 +111,56 @@ export default function EditAuction() {
     }
   }, [id, reset])
 
-  const onSave = handleSubmit(async (data) => {
+  const saveAuction = async (data, { publish = false } = {}) => {
+    const auction = await updateAuctionRequest({
+      id,
+      formValues: data,
+      publish,
+    })
+    return auction
+  }
+
+  const onPublish = handleSubmit(async (data) => {
     try {
-      const auction = await updateAuctionRequest({ id, formValues: data })
-      toast.success(`“${auction.title}” updated successfully`)
+      const auction = await saveAuction(data, { publish: isDraft })
+      if (isDraft) {
+        toast.success(`“${auction.title}” is now live`)
+      } else {
+        toast.success(`“${auction.title}” updated successfully`)
+      }
       navigate('/my-auctions')
     } catch (error) {
       toast.error(error.message || 'Could not update auction. Please try again.')
     }
   })
+
+  const onSaveDraft = async () => {
+    clearErrors()
+    const raw = getValues()
+    const parsed = createAuctionDraftSchema.safeParse(raw)
+
+    if (!parsed.success) {
+      parsed.error.issues.forEach((issue) => {
+        const field = issue.path?.[0]
+        if (field) {
+          setError(field, { type: 'manual', message: issue.message })
+        }
+      })
+      toast.error(parsed.error.issues[0]?.message || 'Complete the required fields to save a draft')
+      return
+    }
+
+    setIsDraftSaving(true)
+    try {
+      const auction = await saveAuction(parsed.data, { publish: false })
+      toast.success(`Draft “${auction.title}” saved`)
+      navigate('/my-auctions')
+    } catch (error) {
+      toast.error(error.message || 'Could not save draft. Please try again.')
+    } finally {
+      setIsDraftSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -138,18 +187,29 @@ export default function EditAuction() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="mb-8"
+        className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
       >
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Edit Auction</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-          Update your listing details. Changes apply immediately after saving.
-        </p>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {isDraft ? 'Finish Draft' : 'Edit Auction'}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+            {isDraft
+              ? 'Review the listing, accept the terms, then publish to make it live.'
+              : 'Update your listing details. Changes apply immediately after saving.'}
+          </p>
+        </div>
+        {isDraft ? (
+          <Badge variant="secondary" className="self-start sm:self-auto">
+            DRAFT
+          </Badge>
+        ) : null}
       </motion.div>
 
       <form
         onSubmit={(event) => {
           event.preventDefault()
-          onSave()
+          onPublish()
         }}
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] lg:items-start"
         noValidate
@@ -176,12 +236,15 @@ export default function EditAuction() {
 
         <AuctionPreviewCard
           mode="edit"
+          isDraft={isDraft}
           values={values}
           coverImage={coverImage}
           imageCount={imageCount}
-          onPublish={onSave}
+          onPublish={onPublish}
+          onSaveDraft={isDraft ? onSaveDraft : undefined}
           onCancel={() => navigate('/my-auctions')}
           isSubmitting={isSubmitting}
+          isDraftSaving={isDraftSaving}
         />
       </form>
     </div>
