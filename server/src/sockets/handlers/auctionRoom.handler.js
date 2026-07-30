@@ -1,5 +1,7 @@
 const SOCKET_EVENTS = require('../../constants/socket.events')
 const auctionRoomStore = require('../../services/auctionRoomStore.service')
+const auctionEngineService = require('../../services/auctionEngine.service')
+const auctionTimerService = require('../../services/auctionTimer.service')
 
 /**
  * Registers auction room management socket event listeners.
@@ -37,12 +39,18 @@ const registerAuctionRoomHandlers = (io, socket) => {
         }`
       )
 
+      // Fetch authoritative server state for reconnection recovery
+      const auctionState = auctionEngineService.getAuctionState(auctionId)
+      const remainingTime = auctionTimerService.getTime(auctionId)
+
       // Acknowledge join to the connected socket
       socket.emit(SOCKET_EVENTS.AUCTION_JOINED, {
         auctionId,
         isSpectator,
         participant,
         stats,
+        auctionState,
+        timerState: { remainingTime }
       })
 
       // Notify other occupants in the auction room
