@@ -5,8 +5,9 @@ const SOCKET_EVENTS = require('../constants/socket.events')
 let io = null
 
 const initSocket = (server) => {
+  console.log("Initializing Socket.IO...");
   io = new Server(server, { cors: corsOptions })
-
+  console.log("Socket.IO initialized successfully");
   // Lazy load handlers to avoid circular dependencies during module initialization
   const registerAuctionSockets = require('./auction.socket')
   const registerBidSockets = require('./bid.socket')

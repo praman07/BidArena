@@ -1,5 +1,6 @@
 const SOCKET_EVENTS = require('../constants/socket.events')
-const { validateBid } = require('../auction-engine/BidValidator')
+const auctionEngineService = require('../auction-engine/AuctionEngine')
+const broadcastService = require('../auction-engine/BroadcastManager')
 
 /**
  * Registers bid validation socket event listeners.
@@ -16,39 +17,54 @@ const registerBidHandlers = (io, socket) => {
    *   auctionState?: { status?: string, currentHighestBid?: number, currentHighestBidderId?: string, minIncrement?: number, startingPrice?: number }
    * }
    */
-  socket.on(SOCKET_EVENTS.BID_PLACE, (payload = {}) => {
+  socket.on(SOCKET_EVENTS.BID_PLACE, async (payload = {}) => {
     try {
-      const auctionState = payload?.auctionState || {
-        status: 'ACTIVE',
-        currentHighestBid: 0,
-        currentHighestBidderId: null,
-        minIncrement: 1,
+      const auctionId = payload.auctionId;
+      if (!auctionId) {
+         socket.emit(SOCKET_EVENTS.BID_ERROR, { message: 'auctionId is required' });
+         return;
       }
 
-      // Execute bid validation rules
-      const validationResult = validateBid(payload, auctionState)
+      // 1. Process bid through the engine (validates, mutates state, persists to DB)
+      const result = await auctionEngineService.processBid(auctionId, payload);
 
-      if (!validationResult.isValid) {
-        console.warn(`[BidValidation Error] Invalid bid from socket ${socket.id}: ${validationResult.message}`)
+      if (!result.success) {
+        console.warn(`[BidValidation Error] Invalid bid from socket ${socket.id}: ${result.message}`)
 
-        // Emit error response strictly to the requesting socket (NO broadcasting)
+        // Emit error response strictly to the requesting socket
         socket.emit(SOCKET_EVENTS.BID_ERROR, {
-          code: validationResult.code,
-          message: validationResult.message,
-          details: validationResult.details || null,
+          code: result.code,
+          message: result.message,
+          details: result.details || null,
         })
         return
       }
 
       console.log(`[BidValidation Success] Valid bid of ${payload.amount} for auction ${payload.auctionId} by user ${payload.user?.userId}`)
 
-      // Emit validation success strictly to the requesting socket (NO broadcasting)
-      socket.emit(SOCKET_EVENTS.BID_VALIDATED, {
+      // 2. Emit acceptance strictly to the requesting socket
+      socket.emit(SOCKET_EVENTS.BID_ACCEPTED, {
         success: true,
-        auctionId: payload.auctionId,
+        auctionId: result.auctionId,
         amount: Number(payload.amount),
-        details: validationResult.details,
+        bidRecord: result.bidRecord,
       })
+
+      // 3. Broadcast updates to the entire room
+      const state = result.updatedState;
+      broadcastService.broadcastHighestBid(auctionId, {
+        currentHighestBid: state.currentHighestBid,
+        highestBidder: state.highestBidder,
+        timestamp: state.lastBidAt,
+      });
+
+      broadcastService.broadcastAuctionStats(auctionId, {
+        totalBidsCount: state.totalBidsCount,
+        currentHighestBid: state.currentHighestBid,
+        startingPrice: state.startingPrice,
+        lastBidAt: state.lastBidAt,
+      });
+      
     } catch (error) {
       console.error(`[BidValidation Exception] Error processing bid for socket ${socket.id}:`, error.message)
       
