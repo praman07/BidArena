@@ -21,13 +21,22 @@ export default function AuctionSummary({
   wishlisted,
   onToggleWishlist,
   onShare,
+  remainingSeconds,
+  serverControlled = false,
 }) {
-  const isLive = auction.status === 'LIVE'
+  const isLive = auction.status === 'LIVE' || auction.status === 'ACTIVE'
+  const isEnded = auction.status === 'ENDED'
+  const timerSeconds =
+    remainingSeconds !== undefined && remainingSeconds !== null
+      ? remainingSeconds
+      : auction.endsInSeconds
 
   return (
     <div className="rounded-2xl border border-border/70 bg-white p-6 shadow-sm sm:p-7">
       <div className="flex flex-wrap items-center gap-2">
-        {isLive ? (
+        {isEnded ? (
+          <Badge variant="outline">ENDED</Badge>
+        ) : isLive ? (
           <Badge variant="live">
             <LivePulse />
             LIVE
@@ -45,10 +54,10 @@ export default function AuctionSummary({
       <div className="mt-6 grid grid-cols-2 gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {isLive ? 'Current highest bid' : 'Opening soon'}
+            {isLive || isEnded ? 'Current highest bid' : 'Opening soon'}
           </p>
           <p className="mt-1 text-3xl font-semibold tracking-tight">
-            {isLive ? formatCurrency(auction.currentBid) : '—'}
+            {isLive || isEnded ? formatCurrency(auction.currentBid) : '—'}
           </p>
         </div>
         <div>
@@ -69,10 +78,12 @@ export default function AuctionSummary({
         </div>
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Reserve price
+            {auction.highestBidder ? 'Highest bidder' : 'Reserve price'}
           </p>
           <p className="mt-1 text-base font-medium tracking-tight">
-            {formatCurrency(auction.reservePrice)}
+            {auction.highestBidder?.username
+              ? auction.highestBidder.username
+              : formatCurrency(auction.reservePrice)}
           </p>
         </div>
       </div>
@@ -84,7 +95,11 @@ export default function AuctionSummary({
           Auction ends in
         </p>
         <div className="mt-3">
-          <CountdownTimer initialSeconds={auction.endsInSeconds} />
+          <CountdownTimer
+            initialSeconds={timerSeconds}
+            remainingSeconds={timerSeconds}
+            controlled={serverControlled}
+          />
         </div>
       </div>
 

@@ -33,7 +33,10 @@ export default function AuctionPreviewCard({
   onSaveDraft,
   isSubmitting,
   isDraftSaving,
+  mode = 'create',
+  onCancel,
 }) {
+  const isEdit = mode === 'edit'
   return (
     <aside className="rounded-xl border border-border/70 bg-white p-5 shadow-sm lg:sticky lg:top-24">
       <div className="flex items-center justify-between gap-2">
@@ -99,18 +102,37 @@ export default function AuctionPreviewCard({
           disabled={isSubmitting}
           onClick={onPublish}
         >
-          {isSubmitting ? 'Publishing…' : 'Publish Auction'}
+          {isEdit
+            ? isSubmitting
+              ? 'Saving…'
+              : 'Save Changes'
+            : isSubmitting
+              ? 'Publishing…'
+              : 'Publish Auction'}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full rounded-xl"
-          size="lg"
-          disabled={isDraftSaving || isSubmitting}
-          onClick={onSaveDraft}
-        >
-          {isDraftSaving ? 'Saving draft…' : 'Save Draft'}
-        </Button>
+        {isEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-xl"
+            size="lg"
+            disabled={isSubmitting}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-xl"
+            size="lg"
+            disabled={isDraftSaving || isSubmitting}
+            onClick={onSaveDraft}
+          >
+            {isDraftSaving ? 'Saving draft…' : 'Save Draft'}
+          </Button>
+        )}
       </div>
     </aside>
   )

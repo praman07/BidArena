@@ -6,7 +6,7 @@ function pad(value) {
 }
 
 export function formatCountdown(totalSeconds) {
-  const safe = Math.max(0, totalSeconds)
+  const safe = Math.max(0, Number(totalSeconds) || 0)
   const hours = Math.floor(safe / 3600)
   const minutes = Math.floor((safe % 3600) / 60)
   const seconds = safe % 60
@@ -18,26 +18,38 @@ export function formatCountdown(totalSeconds) {
   }
 }
 
+/**
+ * Displays a countdown.
+ * When `controlled` is true, remaining time comes from the server (no local tick).
+ */
 export default function CountdownTimer({
   initialSeconds,
+  remainingSeconds,
+  controlled = false,
   compact = false,
   className,
   labelClassName,
 }) {
-  const [remaining, setRemaining] = useState(initialSeconds)
+  const serverValue =
+    remainingSeconds !== undefined && remainingSeconds !== null
+      ? remainingSeconds
+      : initialSeconds
+
+  const [remaining, setRemaining] = useState(serverValue ?? 0)
 
   useEffect(() => {
-    setRemaining(initialSeconds)
-  }, [initialSeconds])
+    setRemaining(serverValue ?? 0)
+  }, [serverValue])
 
   useEffect(() => {
+    if (controlled) return undefined
     const id = setInterval(() => {
       setRemaining((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [controlled])
 
-  const time = formatCountdown(remaining)
+  const time = formatCountdown(controlled ? serverValue : remaining)
 
   if (compact) {
     return (
@@ -59,7 +71,12 @@ export default function CountdownTimer({
         <div key={unit.key} className="flex items-center gap-2">
           <div className="min-w-[4.25rem] rounded-xl border border-border/70 bg-neutral-50 px-3 py-2 text-center">
             <p className="font-mono text-xl font-semibold tracking-tight">{unit.value}</p>
-            <p className={cn('text-[10px] uppercase tracking-wide text-muted-foreground', labelClassName)}>
+            <p
+              className={cn(
+                'text-[10px] uppercase tracking-wide text-muted-foreground',
+                labelClassName
+              )}
+            >
               {unit.label}
             </p>
           </div>

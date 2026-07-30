@@ -2,27 +2,43 @@ import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { formatCurrency, RECENT_AUCTIONS } from '../constants/dashboardData'
+import { formatCurrency } from '../constants/dashboardData'
 import EmptyState from './EmptyState'
 
 function statusBadge(status) {
-  if (status === 'LIVE') return <Badge variant="live">LIVE</Badge>
+  if (status === 'LIVE' || status === 'ACTIVE') return <Badge variant="live">LIVE</Badge>
   if (status === 'ENDING') {
     return (
       <Badge className="border border-amber-100 bg-amber-50 text-amber-700">ENDING</Badge>
     )
   }
+  if (status === 'ENDED') {
+    return <Badge variant="outline">ENDED</Badge>
+  }
   return <Badge variant="outline">UPCOMING</Badge>
 }
 
-export default function RecentAuctionsTable({ auctions = RECENT_AUCTIONS }) {
+function formatEndDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+export default function RecentAuctionsTable({ auctions = [] }) {
   if (!auctions.length) {
     return (
       <EmptyState
-        title="No recent auctions"
-        description="Create a listing or join a live room to see activity here."
-        actionLabel="Browse Auctions"
-        actionHref="/auctions"
+        title="Create your first auction"
+        description="List a premium lot to start receiving bids on BidArena."
+        actionLabel="Create Auction"
+        actionHref="/auctions/create"
       />
     )
   }
@@ -39,7 +55,7 @@ export default function RecentAuctionsTable({ auctions = RECENT_AUCTIONS }) {
           </p>
         </div>
         <Link
-          to="/auctions"
+          to="/my-auctions"
           className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           View all
@@ -54,7 +70,7 @@ export default function RecentAuctionsTable({ auctions = RECENT_AUCTIONS }) {
                 <th className="px-4 py-3 font-medium text-muted-foreground">Auction</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Current Bid</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Time Remaining</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">End Date</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Action</th>
               </tr>
             </thead>
@@ -68,7 +84,7 @@ export default function RecentAuctionsTable({ auctions = RECENT_AUCTIONS }) {
                     <div className="flex items-center gap-3">
                       <img
                         src={auction.image}
-                        alt={auction.imageAlt}
+                        alt={auction.imageAlt || auction.title}
                         className="h-12 w-12 rounded-lg object-cover ring-1 ring-border/70"
                       />
                       <span className="font-medium tracking-tight">{auction.title}</span>
@@ -77,9 +93,11 @@ export default function RecentAuctionsTable({ auctions = RECENT_AUCTIONS }) {
                   <td className="px-4 py-3.5 font-semibold tracking-tight">
                     {formatCurrency(auction.currentBid)}
                   </td>
-                  <td className="px-4 py-3.5">{statusBadge(auction.status)}</td>
-                  <td className="px-4 py-3.5 font-mono text-muted-foreground">
-                    {auction.timeRemaining}
+                  <td className="px-4 py-3.5">
+                    {statusBadge(auction.displayStatus || auction.status)}
+                  </td>
+                  <td className="px-4 py-3.5 text-muted-foreground">
+                    {formatEndDate(auction.endTime || auction.endDate)}
                   </td>
                   <td className="px-4 py-3.5">
                     <Link

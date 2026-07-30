@@ -21,6 +21,17 @@ export default function Login() {
     setSearchParams({}, { replace: true })
   }, [oauthError, toast, setSearchParams])
 
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('bidarena.session.expired') === '1') {
+        sessionStorage.removeItem('bidarena.session.expired')
+        toast.error('Your session expired. Please sign in again.')
+      }
+    } catch {
+      // ignore
+    }
+  }, [toast])
+
   return (
     <AuthLayout>
       <LoginForm />

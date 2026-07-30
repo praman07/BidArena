@@ -1,6 +1,5 @@
 import { Gavel, Trophy, TrendingDown, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ACTIVITY } from '../constants/dashboardData'
 import EmptyState from './EmptyState'
 
 const TYPE_META = {
@@ -20,9 +19,13 @@ const TYPE_META = {
     icon: TrendingDown,
     className: 'bg-red-50 text-red-600',
   },
+  ended: {
+    icon: TrendingDown,
+    className: 'bg-neutral-100 text-neutral-700',
+  },
 }
 
-export default function ActivityTimeline({ items = ACTIVITY }) {
+export default function ActivityTimeline({ items = [] }) {
   if (!items.length) {
     return (
       <EmptyState
