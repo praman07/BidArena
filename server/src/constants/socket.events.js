@@ -39,7 +39,6 @@ const SOCKET_EVENTS = {
 
   // Auction Engine Events
   AUCTION_STATE_UPDATE: 'auction:state_update',
-
   // Error Event
   ERROR: 'error',
 }
