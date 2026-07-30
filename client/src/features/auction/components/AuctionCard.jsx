@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Clock, Heart, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -24,22 +24,33 @@ export default function AuctionCard({ auction, index = 0 }) {
     status,
     image,
     imageAlt,
+    seller,
     currentBid,
-    estimatedValue,
+    startingBid,
     timeRemaining,
     participants,
     progress,
   } = auction
 
+  const navigate = useNavigate()
   const [wishlisted, setWishlisted] = useState(false)
   const isLive = status === 'LIVE'
 
   return (
     <motion.article
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate(`/auctions/${id}`)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          navigate(`/auctions/${id}`)
+        }
+      }}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.04, 0.32), ease: 'easeOut' }}
-      className="group flex flex-col overflow-hidden rounded-xl border border-border/70 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-neutral-900/10"
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border/70 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-neutral-900/10"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
@@ -63,13 +74,16 @@ export default function AuctionCard({ auction, index = 0 }) {
             variant="outline"
             className="absolute left-3 top-3 border-white/20 bg-black/40 text-white backdrop-blur-sm"
           >
-            UPCOMING
+            {status === 'ENDED' ? 'ENDED' : 'UPCOMING'}
           </Badge>
         )}
 
         <button
           type="button"
-          onClick={() => setWishlisted((prev) => !prev)}
+          onClick={(event) => {
+            event.stopPropagation()
+            setWishlisted((prev) => !prev)
+          }}
           aria-label={wishlisted ? `Remove ${title} from wishlist` : `Add ${title} to wishlist`}
           aria-pressed={wishlisted}
           className={cn(
@@ -97,22 +111,23 @@ export default function AuctionCard({ auction, index = 0 }) {
         <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight">
           {title}
         </h3>
+        <p className="mt-1 text-xs text-muted-foreground">by {seller}</p>
 
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {isLive ? 'Current bid' : 'Opening soon'}
+              {isLive ? 'Current bid' : 'Starting bid'}
             </p>
             <p className="text-xl font-semibold tracking-tight">
-              {isLive ? formatCurrency(currentBid) : '—'}
+              {formatCurrency(isLive ? currentBid : startingBid)}
             </p>
           </div>
           <div className="text-right">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Est. value
+              Starting bid
             </p>
             <p className="text-sm font-medium text-muted-foreground">
-              {formatCurrency(estimatedValue)}
+              {formatCurrency(startingBid)}
             </p>
           </div>
         </div>
@@ -121,7 +136,7 @@ export default function AuctionCard({ auction, index = 0 }) {
           <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" aria-hidden="true" />
-              {isLive ? 'Ends in' : 'Starts'}
+              {isLive ? 'Ends in' : status === 'ENDED' ? 'Status' : 'Starts'}
             </span>
             <span className="font-mono font-medium text-foreground">{timeRemaining}</span>
           </div>
@@ -143,6 +158,7 @@ export default function AuctionCard({ auction, index = 0 }) {
           </span>
           <Link
             to={`/auctions/${id}`}
+            onClick={(event) => event.stopPropagation()}
             className={cn(buttonVariants({ size: 'sm' }), 'rounded-lg')}
             aria-label={`${isLive ? 'Join' : 'View'} auction: ${title}`}
           >

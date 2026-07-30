@@ -1,17 +1,20 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { RefreshCw } from 'lucide-react'
 import Navbar from '@/features/public/components/Navbar'
+import { Button } from '@/components/ui/button'
 import AuctionFilters from '../components/AuctionFilters'
 import FeaturedAuction from '../components/FeaturedAuction'
 import AuctionGrid from '../components/AuctionGrid'
 import Pagination from '../components/Pagination'
 import EmptyState from '../components/EmptyState'
 import LoadingSkeleton from '../components/LoadingSkeleton'
+import { getAuctionsRequest } from '../services/auctionService'
 import {
-  AUCTIONS,
   DEFAULT_FILTERS,
   PAGE_SIZE,
   filterAuctions,
+  mapAuctionFromApi,
 } from '../constants/auctionData'
 
 const Footer = lazy(() => import('@/features/public/components/Footer'))
@@ -19,19 +22,34 @@ const Footer = lazy(() => import('@/features/public/components/Footer'))
 export default function BrowseAuctions() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [page, setPage] = useState(1)
+  const [auctions, setAuctions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const loadAuctions = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getAuctionsRequest({ page: 1, limit: 100 })
+      const mapped = (data.auctions || []).map(mapAuctionFromApi)
+      setAuctions(mapped)
+    } catch (err) {
+      setAuctions([])
+      setError(err.message || 'Could not load auctions. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    setLoading(true)
-    const timer = setTimeout(() => setLoading(false), 700)
-    return () => clearTimeout(timer)
-  }, [filters])
+    loadAuctions()
+  }, [loadAuctions])
 
   useEffect(() => {
     setPage(1)
   }, [filters])
 
-  const filtered = useMemo(() => filterAuctions(AUCTIONS, filters), [filters])
+  const filtered = useMemo(() => filterAuctions(auctions, filters), [auctions, filters])
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice(
@@ -39,7 +57,18 @@ export default function BrowseAuctions() {
     currentPage * PAGE_SIZE
   )
 
+  const featured = useMemo(
+    () => filtered.find((auction) => auction.status === 'LIVE') || filtered[0] || null,
+    [filtered]
+  )
+
   const clearFilters = () => setFilters(DEFAULT_FILTERS)
+  const hasActiveFilters =
+    filters.search ||
+    filters.category !== DEFAULT_FILTERS.category ||
+    filters.status !== DEFAULT_FILTERS.status ||
+    filters.priceRange !== DEFAULT_FILTERS.priceRange ||
+    filters.sort !== DEFAULT_FILTERS.sort
 
   const handlePageChange = (nextPage) => {
     setPage(nextPage)
@@ -79,7 +108,7 @@ export default function BrowseAuctions() {
             resultCount={filtered.length}
           />
 
-          <FeaturedAuction />
+          {!loading && !error && featured && <FeaturedAuction auction={featured} />}
 
           <section aria-labelledby="auction-grid-heading">
             <div className="mb-8 flex items-end justify-between gap-4">
@@ -98,8 +127,30 @@ export default function BrowseAuctions() {
 
             {loading ? (
               <LoadingSkeleton count={6} />
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-neutral-50/60 px-6 py-16 text-center">
+                <h3 className="text-xl font-semibold tracking-tight">Something went wrong</h3>
+                <p className="mt-2 max-w-md text-muted-foreground">{error}</p>
+                <Button type="button" className="mt-6 rounded-lg" onClick={loadAuctions}>
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  Retry
+                </Button>
+              </div>
             ) : pageItems.length === 0 ? (
-              <EmptyState onClear={clearFilters} />
+              <EmptyState
+                title={
+                  hasActiveFilters ? 'No auctions found' : 'No auctions available.'
+                }
+                description={
+                  hasActiveFilters
+                    ? 'We couldn’t find any listings that match your filters. Try adjusting your search, category, or price range.'
+                    : 'There are no active auctions to show right now. Create one to get started.'
+                }
+                onClear={clearFilters}
+                showClear={Boolean(hasActiveFilters)}
+                actionLabel="Create Auction"
+                actionHref="/auctions/create"
+              />
             ) : (
               <>
                 <AuctionGrid auctions={pageItems} />

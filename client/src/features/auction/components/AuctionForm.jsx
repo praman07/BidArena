@@ -1,3 +1,1 @@
-export default function AuctionForm() {
-  return <div>AuctionForm</div>
-}
+export { default } from '../pages/CreateAuction'

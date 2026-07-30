@@ -6,4 +6,9 @@ export const API_ENDPOINTS = {
     ME: '/auth/me',
     GOOGLE: '/auth/google',
   },
+  AUCTIONS: {
+    CREATE: '/auctions',
+    LIST: '/auctions',
+    DETAIL: (id) => `/auctions/${id}`,
+  },
 }
