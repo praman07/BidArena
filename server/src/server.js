@@ -31,6 +31,15 @@ const startServer = async () => {
     
     process.on('SIGINT', shutdown)
     process.on('SIGTERM', shutdown)
+
+    // Handle Nodemon restart
+    process.once('SIGUSR2', () => {
+      console.log('Nodemon restart detected. Shutting down server gracefully...')
+      server.close(() => {
+        console.log('HTTP Server closed for nodemon restart.')
+        process.kill(process.pid, 'SIGUSR2')
+      })
+    })
     
   } catch (error) {
     console.error('Failed to start server:', error.message)
