@@ -35,6 +35,7 @@ class AuctionTimerService {
 
     const auctionEngineService = require('./auctionEngine.service')
     const auctionRoomStore = require('./auctionRoomStore.service')
+    const auctionHeatService = require('./auctionHeat.service')
 
     // Tick every 1 second (1000ms)
     timerState.intervalId = setInterval(() => {
@@ -54,7 +55,8 @@ class AuctionTimerService {
         spectatorCount: roomStats?.spectatorCount || 0,
         currentHighestBid: state?.currentHighestBid || 0,
         status: state?.status || 'UNKNOWN',
-        remainingTime: timerState.remainingTime
+        remainingTime: timerState.remainingTime,
+        heatScore: auctionHeatService.calculateHeat(auctionId)
       }
       broadcastService.broadcastLiveStats(auctionId, liveStats)
 
