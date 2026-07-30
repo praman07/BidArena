@@ -1,0 +1,47 @@
+const { Server } = require('socket.io')
+const corsOptions = require('../config/cors')
+const SOCKET_EVENTS = require('../constants/socket.events')
+const registerRoomHandlers = require('./handlers/room.handler')
+
+let io = null
+
+/**
+ * Initializes Socket.IO on the provided HTTP server instance.
+ * @param {import('http').Server} server - HTTP Server instance
+ * @returns {import('socket.io').Server} Socket.IO server instance
+ */
+const initSocket = (server) => {
+  io = new Server(server, {
+    cors: corsOptions,
+  })
+
+  io.on(SOCKET_EVENTS.CONNECTION, (socket) => {
+    console.log(`[Socket] Client connected: ${socket.id}`)
+
+    // Register room event handlers
+    registerRoomHandlers(io, socket)
+
+    // Log disconnection
+    socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
+      console.log(`[Socket] Client disconnected: ${socket.id} (Reason: ${reason})`)
+    })
+  })
+
+  return io
+}
+
+/**
+ * Gets the initialized Socket.IO server instance.
+ * @returns {import('socket.io').Server}
+ */
+const getIO = () => {
+  if (!io) {
+    throw new Error('Socket.IO is not initialized! Call initSocket(server) first.')
+  }
+  return io
+}
+
+module.exports = {
+  initSocket,
+  getIO,
+}
