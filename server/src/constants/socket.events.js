@@ -29,7 +29,7 @@ const SOCKET_EVENTS = {
   BID_ACCEPTED: 'bid:accepted',
   BID_ERROR: 'bid:error',
 
-  // Broadcast Events
+  // Socket Broadcast Events
   BROADCAST_HIGHEST_BID: 'broadcast:highest_bid',
   BROADCAST_STATS: 'broadcast:stats',
   BROADCAST_BIDDER_COUNT: 'broadcast:bidder_count',
@@ -37,6 +37,8 @@ const SOCKET_EVENTS = {
   BROADCAST_ROOM_UPDATE: 'broadcast:room_update',
   BROADCAST_AUCTION_STATE: 'broadcast:auction_state',
 
+  // Auction Engine Events
+  AUCTION_STATE_UPDATE: 'auction:state_update',
   // Error Event
   ERROR: 'error',
 }

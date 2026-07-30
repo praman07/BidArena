@@ -4,118 +4,133 @@ const { getIO } = require('../sockets')
 /**
  * Socket.IO Real-Time Broadcasting Service
  * Domain B: Auction Engine & Real-Time
- *
- * All methods target a specific auction room: `auction:<auctionId>`
- * No validation. No persistence. No timers.
  */
 class BroadcastService {
+  /**
+   * Helper to format standard room name for an auction
+   * @param {string} auctionId
+   * @returns {string}
+   */
   getRoomName(auctionId) {
     return `auction:${auctionId}`
   }
 
   /**
-   * Broadcast the current highest bid to the entire room.
+   * Broadcast highest bid update to all clients in the auction room
    * @param {string} auctionId
-   * @param {{ currentHighestBid: number, highestBidder: Object, timestamp: Date }} data
+   * @param {Object} data - { currentHighestBid, highestBidder, timestamp }
    */
   broadcastHighestBid(auctionId, data = {}) {
     if (!auctionId) return
-    getIO()
-      .in(this.getRoomName(auctionId))
-      .emit(SOCKET_EVENTS.BROADCAST_HIGHEST_BID, {
-        auctionId,
-        currentHighestBid: data.currentHighestBid || 0,
-        highestBidder: data.highestBidder || null,
-        timestamp: data.timestamp || new Date(),
-      })
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      currentHighestBid: data.currentHighestBid || 0,
+      highestBidder: data.highestBidder || null,
+      timestamp: data.timestamp || new Date(),
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_HIGHEST_BID, payload)
+    console.log(`[Broadcast] Highest bid broadcast to ${roomName}: $${payload.currentHighestBid}`)
   }
 
   /**
-   * Broadcast auction statistics to the entire room.
+   * Broadcast auction statistics to all clients in the auction room
    * @param {string} auctionId
-   * @param {{ totalBidsCount: number, currentHighestBid: number, startingPrice: number, lastBidAt: Date }} stats
+   * @param {Object} stats - { totalBidsCount, currentHighestBid, startingPrice, lastBidAt }
    */
   broadcastAuctionStats(auctionId, stats = {}) {
     if (!auctionId) return
-    getIO()
-      .in(this.getRoomName(auctionId))
-      .emit(SOCKET_EVENTS.BROADCAST_STATS, {
-        auctionId,
-        totalBidsCount: stats.totalBidsCount || 0,
-        currentHighestBid: stats.currentHighestBid || 0,
-        startingPrice: stats.startingPrice || 0,
-        lastBidAt: stats.lastBidAt || null,
-      })
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      totalBidsCount: stats.totalBidsCount || 0,
+      currentHighestBid: stats.currentHighestBid || 0,
+      startingPrice: stats.startingPrice || 0,
+      lastBidAt: stats.lastBidAt || null,
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_STATS, payload)
+    console.log(`[Broadcast] Auction stats broadcast to ${roomName}`)
   }
 
   /**
-   * Broadcast active bidder count to the room.
+   * Broadcast active bidder count to the auction room
    * @param {string} auctionId
    * @param {number} count
    */
   broadcastBidderCount(auctionId, count = 0) {
     if (!auctionId) return
-    getIO()
-      .in(this.getRoomName(auctionId))
-      .emit(SOCKET_EVENTS.BROADCAST_BIDDER_COUNT, {
-        auctionId,
-        bidderCount: Number(count) || 0,
-      })
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      bidderCount: Number(count) || 0,
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_BIDDER_COUNT, payload)
+    console.log(`[Broadcast] Bidder count (${payload.bidderCount}) broadcast to ${roomName}`)
   }
 
   /**
-   * Broadcast spectator count to the room.
+   * Broadcast spectator count to the auction room
    * @param {string} auctionId
    * @param {number} count
    */
   broadcastSpectators(auctionId, count = 0) {
     if (!auctionId) return
-    getIO()
-      .in(this.getRoomName(auctionId))
-      .emit(SOCKET_EVENTS.BROADCAST_SPECTATORS, {
-        auctionId,
-        spectatorCount: Number(count) || 0,
-      })
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      spectatorCount: Number(count) || 0,
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_SPECTATORS, payload)
+    console.log(`[Broadcast] Spectator count (${payload.spectatorCount}) broadcast to ${roomName}`)
   }
 
   /**
-   * Broadcast room member and spectator counts to the room.
+   * Broadcast overall room updates (member and spectator counts)
    * @param {string} auctionId
-   * @param {{ userCount: number, spectatorCount: number, totalCount: number, activeUsers: Array }} roomStats
+   * @param {Object} roomStats - { userCount, spectatorCount, totalCount, activeUsers }
    */
   broadcastRoomUpdate(auctionId, roomStats = {}) {
     if (!auctionId) return
-    getIO()
-      .in(this.getRoomName(auctionId))
-      .emit(SOCKET_EVENTS.BROADCAST_ROOM_UPDATE, {
-        auctionId,
-        userCount: roomStats.userCount || 0,
-        spectatorCount: roomStats.spectatorCount || 0,
-        totalCount: roomStats.totalCount || 0,
-        activeUsers: roomStats.activeUsers || [],
-      })
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      userCount: roomStats.userCount || 0,
+      spectatorCount: roomStats.spectatorCount || 0,
+      totalCount: roomStats.totalCount || 0,
+      activeUsers: roomStats.activeUsers || [],
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_ROOM_UPDATE, payload)
+    console.log(`[Broadcast] Room update broadcast to ${roomName}`)
   }
 
   /**
-   * Broadcast the full authoritative auction state to the room.
+   * Broadcast complete current state of the auction
    * @param {string} auctionId
-   * @param {Object} state
+   * @param {Object} state - Authoritative auction state object
    */
   broadcastAuctionState(auctionId, state = {}) {
     if (!auctionId) return
-    getIO()
-      .in(this.getRoomName(auctionId))
-      .emit(SOCKET_EVENTS.BROADCAST_AUCTION_STATE, {
-        auctionId,
-        status: state.status || 'ACTIVE',
-        currentHighestBid: state.currentHighestBid || 0,
-        highestBidder: state.highestBidder || null,
-        totalBidsCount: state.totalBidsCount || 0,
-        lastBidAt: state.lastBidAt || null,
-        recentBids: state.recentBids || [],
-      })
+    const roomName = this.getRoomName(auctionId)
+    const payload = {
+      auctionId,
+      status: state.status || 'ACTIVE',
+      currentHighestBid: state.currentHighestBid || 0,
+      highestBidder: state.highestBidder || null,
+      totalBidsCount: state.totalBidsCount || 0,
+      lastBidAt: state.lastBidAt || null,
+      recentBids: state.recentBids || [],
+    }
+
+    getIO().in(roomName).emit(SOCKET_EVENTS.BROADCAST_AUCTION_STATE, payload)
+    console.log(`[Broadcast] Full auction state broadcast to ${roomName}`)
   }
 }
 
+// Export singleton instance of BroadcastService
 const broadcastService = new BroadcastService()
 module.exports = broadcastService
