@@ -14,6 +14,16 @@ const createAuction = catchAsync(async (req, res) => {
   })
 })
 
+const getAllAuctions = catchAsync(async (req, res) => {
+  const result = await auctionService.getAllAuctions({
+    page: req.query.page,
+    limit: req.query.limit,
+  })
+
+  return ApiResponse.ok(res, 'Auctions fetched successfully', result)
+})
+
 module.exports = {
   createAuction,
+  getAllAuctions,
 }

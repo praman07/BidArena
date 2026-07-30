@@ -1,7 +1,4 @@
-import {
-  AUCTIONS,
-  formatCurrency,
-} from './auctionData'
+import { formatCurrency } from './auctionData'
 import rolexDaytona from '@/assets/images/rolex-daytona.jpg'
 import omegaSeamaster from '@/assets/images/omega-seamaster.jpg'
 import featuredWatch from '@/assets/images/featured-watch.jpg'
@@ -332,45 +329,11 @@ export const ROLEX_DETAILS = {
 
 export function getAuctionDetails(id) {
   if (id === ROLEX_DETAILS.id) return ROLEX_DETAILS
-
-  const auction = AUCTIONS.find((item) => item.id === id)
-  if (!auction) return null
-
-  const endsInSeconds = Math.max(60, Math.round(auction.endsInHours * 3600))
-
-  return {
-    id: auction.id,
-    title: auction.title,
-    shortTitle: auction.title.split('—')[0].trim(),
-    category: auction.category,
-    status: auction.status,
-    currentBid: auction.currentBid,
-    estimatedValue: auction.estimatedValue,
-    startingPrice: Math.round((auction.currentBid || auction.estimatedValue) * 0.55),
-    reservePrice: Math.round((auction.estimatedValue || auction.currentBid) * 0.75),
-    endsInSeconds,
-    participants: auction.participants,
-    views: Math.round(auction.participants * 28 + 420),
-    watchers: Math.round(auction.participants * 1.6),
-    image: auction.image,
-    imageAlt: auction.imageAlt,
-    seller: buildSeller(auction.seller),
-    gallery: buildGallery(auction),
-    description: buildDescription(auction),
-    specifications: buildSpecs(auction),
-    bidHistory: buildBidHistory(auction.currentBid, auction.status),
-  }
+  return null
 }
 
-export function getRelatedAuctions(currentId, limit = 4) {
-  const current = AUCTIONS.find((item) => item.id === currentId)
-  const sameCategory = AUCTIONS.filter(
-    (item) => item.id !== currentId && item.category === current?.category
-  )
-  const others = AUCTIONS.filter(
-    (item) => item.id !== currentId && item.category !== current?.category
-  )
-  return [...sameCategory, ...others].slice(0, limit)
+export function getRelatedAuctions(_currentId, _limit = 4) {
+  return []
 }
 
 export const DETAIL_TABS = [

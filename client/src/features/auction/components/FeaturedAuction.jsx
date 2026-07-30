@@ -5,7 +5,7 @@ import { ArrowRight, Clock, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { FEATURED_AUCTION, formatCurrency } from '../constants/auctionData'
+import { formatCurrency } from '../constants/auctionData'
 
 function formatCountdown(totalSeconds) {
   const safe = Math.max(0, totalSeconds)
@@ -24,16 +24,19 @@ function LivePulse() {
   )
 }
 
-export default function FeaturedAuction() {
-  const auction = FEATURED_AUCTION
-  const [remaining, setRemaining] = useState(auction.endsInSeconds)
+export default function FeaturedAuction({ auction }) {
+  const [remaining, setRemaining] = useState(auction?.endsInSeconds ?? 0)
 
   useEffect(() => {
+    if (!auction) return undefined
+    setRemaining(auction.endsInSeconds ?? 0)
     const id = setInterval(() => {
       setRemaining((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [auction])
+
+  if (!auction) return null
 
   return (
     <motion.section

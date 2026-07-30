@@ -42,3 +42,10 @@ export const createAuctionRequest = async ({ formValues, imageFiles, saveAsDraft
 
   return data.data.auction
 }
+
+export const getAuctionsRequest = async ({ page = 1, limit = 100 } = {}) => {
+  const { data } = await api.get(API_ENDPOINTS.AUCTIONS.LIST, {
+    params: { page, limit },
+  })
+  return data.data
+}

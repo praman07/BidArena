@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 
-const AUCTION_STATUSES = ['DRAFT', 'UPCOMING', 'LIVE', 'ENDED', 'CANCELLED']
+const AUCTION_STATUSES = ['DRAFT', 'ACTIVE', 'UPCOMING', 'LIVE', 'ENDED', 'CANCELLED']
+
 
 const auctionSchema = new mongoose.Schema(
   {
@@ -87,7 +88,7 @@ const auctionSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: AUCTION_STATUSES,
-      default: 'UPCOMING',
+      default: 'ACTIVE',
       index: true,
     },
     startTime: {
@@ -157,6 +158,17 @@ const auctionSchema = new mongoose.Schema(
 auctionSchema.index({ endTime: 1, status: 1 })
 
 auctionSchema.methods.toPublicJSON = function toPublicJSON() {
+  const seller = this.seller
+  const sellerPayload =
+    seller && typeof seller === 'object' && seller.username
+      ? {
+          id: seller._id?.toString?.() || seller.id,
+          username: seller.username,
+          email: seller.email,
+          avatar: seller.avatar,
+        }
+      : seller
+
   return {
     id: this._id.toString(),
     auctionId: this.auctionId,
@@ -171,8 +183,9 @@ auctionSchema.methods.toPublicJSON = function toPublicJSON() {
     reservePrice: this.reservePrice,
     bidIncrement: this.bidIncrement,
     images: this.images,
-    seller: this.seller,
+    seller: sellerPayload,
     participants: this.participants,
+    participantCount: Array.isArray(this.participants) ? this.participants.length : 0,
     status: this.status,
     startTime: this.startTime,
     endTime: this.endTime,

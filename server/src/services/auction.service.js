@@ -13,8 +13,8 @@ const resolveStatus = (startTime, endTime, { asDraft = false } = {}) => {
   if (asDraft) return 'DRAFT'
   const now = Date.now()
   if (now >= endTime.getTime()) return 'ENDED'
-  if (now >= startTime.getTime()) return 'LIVE'
-  return 'UPCOMING'
+  // Published, browseable auctions are ACTIVE (display LIVE/UPCOMING from dates on client).
+  return 'ACTIVE'
 }
 
 const createAuction = async ({ sellerId, payload, files = [] }) => {
@@ -61,9 +61,38 @@ const createAuction = async ({ sellerId, payload, files = [] }) => {
     minIncrement: bidIncrement,
   })
 
+  await auction.populate('seller', 'username email avatar')
   return auction
+}
+
+const getAllAuctions = async ({ page = 1, limit = 12 } = {}) => {
+  const pageNum = Math.max(1, parseInt(page, 10) || 1)
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 12))
+  const skip = (pageNum - 1) * limitNum
+
+  const filter = { status: 'ACTIVE' }
+
+  const [auctions, total] = await Promise.all([
+    Auction.find(filter)
+      .populate('seller', 'username email avatar')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum),
+    Auction.countDocuments(filter),
+  ])
+
+  return {
+    auctions: auctions.map((auction) => auction.toPublicJSON()),
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limitNum)),
+    },
+  }
 }
 
 module.exports = {
   createAuction,
+  getAllAuctions,
 }

@@ -1,8 +1,17 @@
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Gavel, SearchX } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-export default function EmptyState({ onClear }) {
+export default function EmptyState({
+  title = 'No auctions available.',
+  description = 'There are no active auctions to show right now. Create one to get started.',
+  onClear,
+  actionLabel = 'Create Auction',
+  actionHref = '/auctions/create',
+  showClear = false,
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -20,17 +29,21 @@ export default function EmptyState({ onClear }) {
         </span>
       </div>
 
-      <h3 className="text-xl font-semibold tracking-tight">No auctions found</h3>
-      <p className="mt-2 max-w-md text-muted-foreground">
-        We couldn’t find any listings that match your filters. Try adjusting your
-        search, category, or price range.
-      </p>
+      <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+      <p className="mt-2 max-w-md text-muted-foreground">{description}</p>
 
-      {onClear && (
-        <Button type="button" onClick={onClear} className="mt-6 rounded-lg">
-          Clear Filters
-        </Button>
-      )}
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+        {actionHref && actionLabel && (
+          <Link to={actionHref} className={cn(buttonVariants(), 'rounded-lg')}>
+            {actionLabel}
+          </Link>
+        )}
+        {showClear && onClear && (
+          <Button type="button" variant="outline" onClick={onClear} className="rounded-lg">
+            Clear Filters
+          </Button>
+        )}
+      </div>
     </motion.div>
   )
 }
