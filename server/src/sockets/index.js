@@ -6,7 +6,7 @@ const {
   registerAuctionRoomHandlers,
   handleAuctionDisconnectCleanup,
 } = require('./handlers/auctionRoom.handler')
-const registerBidHandlers = require('./handlers/bid.handler')
+const registerBidPipelineHandlers = require('./handlers/bidPipeline.handler')
 
 let io = null
 
@@ -26,7 +26,8 @@ const initSocket = (server) => {
     // Register room event handlers
     registerRoomHandlers(io, socket)
     registerAuctionRoomHandlers(io, socket)
-    registerBidHandlers(io, socket)
+    // Unified pipeline: validation → engine → broadcast
+    registerBidPipelineHandlers(io, socket)
 
     // Handle disconnect and perform cleanup
     socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
