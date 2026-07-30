@@ -31,6 +31,16 @@ const normalizeError = (error) => {
     return ApiError.unauthorized('Session expired or invalid')
   }
 
+  if (error.name === 'MulterError') {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return ApiError.badRequest('Each image must be 5MB or smaller')
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return ApiError.badRequest('You can upload at most 8 images')
+    }
+    return ApiError.badRequest(error.message || 'Image upload failed')
+  }
+
   return null
 }
 

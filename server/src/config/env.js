@@ -21,10 +21,17 @@ const env = {
   GOOGLE_CALLBACK_URL:
     process.env.GOOGLE_CALLBACK_URL ||
     'http://localhost:5000/api/auth/google/callback',
+
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 }
 
 env.isProduction = env.NODE_ENV === 'production'
 env.googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
+env.cloudinaryEnabled = Boolean(
+  env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET
+)
 
 const missing = required.filter((key) => !env[key])
 if (missing.length > 0) {

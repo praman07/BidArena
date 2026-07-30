@@ -22,6 +22,7 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auctions" element={<BrowseAuctions />} />
+        <Route path="/browse-auctions" element={<BrowseAuctions />} />
         <Route path="/auctions/:id" element={<AuctionDetails />} />
 
         <Route element={<GuestRoute />}>

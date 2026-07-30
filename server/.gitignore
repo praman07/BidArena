@@ -13,6 +13,10 @@ dist-ssr
 *.local
 .env
 
+# Local auction image uploads (Cloudinary used in production)
+uploads/auctions/*
+!uploads/auctions/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
@@ -11,6 +12,7 @@ import AuctionConfiguration from '../components/AuctionConfiguration'
 import ShippingSection from '../components/ShippingSection'
 import SellerNotes from '../components/SellerNotes'
 import AuctionPreviewCard from '../components/AuctionPreviewCard'
+import { createAuctionRequest } from '../services/auctionService'
 import {
   createAuctionDefaults,
   createAuctionSchema,
@@ -18,6 +20,7 @@ import {
 
 export default function CreateAuction() {
   const toast = useToast()
+  const navigate = useNavigate()
   const [images, setImages] = useState([])
   const [imageError, setImageError] = useState('')
   const [autoSaveState, setAutoSaveState] = useState('idle')
@@ -49,28 +52,57 @@ export default function CreateAuction() {
     return () => clearTimeout(timer)
   }, [values, images, isDirty])
 
-  const onPublish = handleSubmit(async (data) => {
+  const submitAuction = async (data, { saveAsDraft = false } = {}) => {
     if (images.length === 0) {
       setImageError('Upload at least one product image')
       toast.error('Add at least one product image before publishing')
       return
     }
 
+    const imageFiles = images.map((image) => image.file).filter(Boolean)
+    if (imageFiles.length === 0) {
+      setImageError('Upload at least one product image')
+      toast.error('Add at least one product image before publishing')
+      return
+    }
+
     setImageError('')
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    setDraftStatus('Published')
-    toast.success(`“${data.productName}” is ready to go live`)
+
+    try {
+      const auction = await createAuctionRequest({
+        formValues: data,
+        imageFiles,
+        saveAsDraft,
+      })
+
+      if (saveAsDraft) {
+        setDraftStatus('Draft · Saved')
+        setAutoSaveState('saved')
+        toast.success('Draft saved successfully')
+        return
+      }
+
+      setDraftStatus('Published')
+      toast.success(`“${auction.title}” published successfully`)
+      navigate('/browse-auctions')
+    } catch (error) {
+      toast.error(error.message || 'Could not create auction. Please try again.')
+    }
+  }
+
+  const onPublish = handleSubmit(async (data) => {
+    await submitAuction(data, { saveAsDraft: false })
   })
 
-  const onSaveDraft = async () => {
+  const onSaveDraft = handleSubmit(async (data) => {
     setIsDraftSaving(true)
     setAutoSaveState('saving')
-    await new Promise((resolve) => setTimeout(resolve, 700))
-    setIsDraftSaving(false)
-    setAutoSaveState('saved')
-    setDraftStatus('Draft · Saved')
-    toast.success('Draft saved locally')
-  }
+    try {
+      await submitAuction(data, { saveAsDraft: true })
+    } finally {
+      setIsDraftSaving(false)
+    }
+  })
 
   return (
     <div className="mx-auto max-w-7xl">
