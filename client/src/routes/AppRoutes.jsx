@@ -7,7 +7,7 @@ import Login from '@/features/auth/pages/Login'
 import Register from '@/features/auth/pages/Register'
 import Profile from '@/features/profile/pages/Profile'
 import Dashboard from '@/features/dashboard/pages/Dashboard'
-import AuctionList from '@/features/auction/pages/AuctionList'
+import BrowseAuctions from '@/features/auction/pages/BrowseAuctions'
 import AuctionDetails from '@/features/auction/pages/AuctionDetails'
 import CreateAuction from '@/features/auction/pages/CreateAuction'
 import EditAuction from '@/features/auction/pages/EditAuction'
@@ -21,28 +21,29 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/auctions" element={<BrowseAuctions />} />
+        <Route path="/auctions/:id" element={<AuctionDetails />} />
 
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Route>
 
-        <Route element={<MainLayout />}>
-          <Route path="/auctions" element={<AuctionList />} />
-
-          <Route element={<ProtectedRoute />}>
+        {/* Authenticated shell — sidebar + header foundation */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/my-auctions" element={<MyAuctions />} />
             <Route path="/auctions/create" element={<CreateAuction />} />
             <Route path="/auctions/:id/edit" element={<EditAuction />} />
-            <Route path="/my-auctions" element={<MyAuctions />} />
-            <Route path="/auction-room/:id" element={<AuctionRoom />} />
-
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-            </Route>
           </Route>
+        </Route>
 
-          <Route path="/auctions/:id" element={<AuctionDetails />} />
+        <Route element={<MainLayout />}>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/auction-room/:id" element={<AuctionRoom />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />
